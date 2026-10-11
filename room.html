@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>部屋 | ボドゲポータル</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" id="home-link">🎲 <span class="hide-sm">ボドゲポータル</span></a>
+    <strong id="game-title"></strong>
+    <span class="spacer"></span>
+    <span class="room-code" id="room-code" title="部屋番号"></span>
+    <button class="btn small" id="invite" type="button">招待リンク</button>
+  </header>
+
+  <div class="room-layout">
+    <main>
+      <div id="banner"></div>
+      <div id="stage"></div>
+    </main>
+    <aside class="side">
+      <section class="panel">
+        <h2>プレイヤー</h2>
+        <ul class="player-list" id="players"></ul>
+        <p class="small muted" id="spectators"></p>
+        <div id="host-controls" class="stack"></div>
+      </section>
+      <section class="panel">
+        <h2>チャット</h2>
+        <div class="chat-log" id="chat-log" aria-live="polite"></div>
+        <form class="chat-form" id="chat-form">
+          <input class="input" id="chat-input" maxlength="200" placeholder="メッセージ" autocomplete="off" aria-label="メッセージ">
+          <button class="btn small" type="submit">送信</button>
+        </form>
+      </section>
+    </aside>
+  </div>
+
+  <script type="module" src="js/room.js"></script>
+</body>
+</html>
