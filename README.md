@@ -2,7 +2,7 @@
 
 部屋番号を共有するだけで、友だちと 2〜6 人で遊べるブラウザボードゲーム集です。ログイン不要。
 
-**遊ぶ: https://an-dot-su4.github.io/boardgameportal/**
+**遊ぶ: https://an-dot-su4.github.io/BoardGamePortal/**
 
 ## 遊び方
 
