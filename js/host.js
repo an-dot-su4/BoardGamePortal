@@ -64,6 +64,7 @@ export class Host {
   }
 
   say(text) {
+    if (!this.chatAllowed(this.pid)) return this.emitError('今はチャットできません');
     this.addChat(this.nameOf(this.pid), text);
   }
 
@@ -113,7 +114,16 @@ export class Host {
     const peer = this.peers.get(from);
     if (!peer) return;
     if (msg.t === 'act') this.apply(peer.pid, msg.a, err => this.transport.send({ t: 'err', msg: err }, from));
-    else if (msg.t === 'chat') this.addChat(peer.name, msg.text);
+    else if (msg.t === 'chat') {
+      if (this.chatAllowed(peer.pid)) this.addChat(peer.name, msg.text);
+      else this.transport.send({ t: 'err', msg: '今はチャットできません' }, from);
+    }
+  }
+
+  // ゲームが canChat を定義していれば従う（人狼で脱落した人の発言を止める など）
+  chatAllowed(pid) {
+    if (this.status !== 'playing' || !this.state || !this.logic?.canChat || !pid) return true;
+    return this.logic.canChat(this.state, pid);
   }
 
   onHello(msg, from) {

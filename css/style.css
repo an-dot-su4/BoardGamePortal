@@ -212,8 +212,10 @@ footer.site-footer { color: var(--muted); font-size: 0.8rem; padding: 32px 16px;
 .log { font-size: 0.85rem; max-height: 160px; overflow-y: auto; display: grid; gap: 2px; }
 
 .game-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
-.game-actions .btn { background: rgb(255 255 255 / 0.92); color: #222; border-color: transparent; }
-.game-actions .btn.primary { background: #ffd36b; color: #2b2620; }
+/* 緑の卓の上のボタンは、明るい背景・濃い文字にそろえる */
+.table .btn { background: rgb(255 255 255 / 0.92); color: #222; border-color: transparent; }
+.table .btn:hover:not(:disabled) { background: #fff; }
+.table .btn.primary, .table .btn.primary:hover:not(:disabled) { background: #ffd36b; color: #2b2620; }
 
 .result-box { background: rgb(0 0 0 / 0.25); border-radius: 12px; padding: 12px 16px; margin: 12px 0; }
 .result-box h3 { margin: 0 0 6px; }
@@ -247,3 +249,52 @@ footer.site-footer { color: var(--muted); font-size: 0.8rem; padding: 32px 16px;
 .hazard .icon { font-size: 3rem; grid-row: span 2; }
 .hazard .need { font-size: 1.6rem; font-weight: 800; }
 .stamp { display: inline-block; background: #fff; color: #2b2620; border-radius: 999px; padding: 0 8px; font-size: 0.8rem; font-weight: 700; }
+
+/* ---- 文字が主役のゲーム（ワード人狼・人狼など） ---- */
+.big-word { font-size: clamp(1.8rem, 7vw, 2.6rem); font-weight: 800; margin: 4px 0; }
+.role-card { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: center; }
+.role-card .icon { font-size: 2.6rem; grid-row: span 2; }
+.seat.dead { opacity: 0.45; text-decoration: line-through; }
+.seat.pick { cursor: pointer; }
+.seat.pick:hover { border-color: rgb(255 255 255 / 0.6); }
+.seat.chosen { border-color: #ffd36b; }
+
+/* ---- ほしならべ ---- */
+.star-top { font-size: clamp(2.6rem, 12vw, 4rem); font-weight: 800; line-height: 1.1; color: #ffe08a; }
+.star-card {
+  min-width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; padding: 0 6px;
+  background: radial-gradient(circle at 35% 30%, #fff6c9, #ffd36b); color: #3b2f12; font-weight: 800;
+}
+.star-play { font-size: 1.3rem; padding: 14px 28px; min-height: 56px; }
+
+/* ---- すごろく ---- */
+.sg-board { display: grid; gap: 4px; margin-top: 12px; }
+.sg-cell {
+  aspect-ratio: 1; min-width: 0; border-radius: 8px; background: rgb(255 255 255 / 0.9); color: #2b2620;
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px;
+}
+.sg-cell.fwd, .sg-cell.again { background: #d8f2d0; }
+.sg-cell.back, .sg-cell.rest { background: #ffd9d4; }
+.sg-cell.card { background: #fff0b8; }
+.sg-cell.warp { background: #e3d8ff; }
+.sg-cell.coin { background: #ffe9c7; }
+.sg-cell.start, .sg-cell.goal { background: #ffd36b; font-weight: 800; }
+.sg-num { position: absolute; top: 1px; left: 4px; font-size: 0.65rem; color: #776d60; }
+.sg-cell.goal .sg-num, .sg-cell.start .sg-num { position: static; font-size: 0.9rem; color: inherit; }
+.sg-icon { font-size: clamp(0.8rem, 3vw, 1.2rem); }
+.sg-tokens { display: flex; flex-wrap: wrap; gap: 1px; justify-content: center; }
+.sg-token {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: #fff;
+  font-size: 0.65rem; font-weight: 800; border: 1.5px solid #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+.sg-dice { font-size: 2.6rem; line-height: 1; }
+
+/* ---- お絵描き伝言 ---- */
+.ok-canvas { width: 100%; max-width: 600px; aspect-ratio: 4 / 3; height: auto; border-radius: 10px; background: #fff; display: block; box-shadow: 0 2px 6px rgb(0 0 0 / 0.3); }
+.ok-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ok-color { width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgb(255 255 255 / 0.6); cursor: pointer; padding: 0; font-size: 0.9rem; }
+.ok-color.on { outline: 3px solid #ffd36b; outline-offset: 1px; }
+.ok-width { display: inline-block; border-radius: 50%; background: currentColor; }
+.ok-chain { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.ok-entry .ok-canvas { max-width: 100%; }
+.ok-text { background: #fff; color: #2b2620; border-radius: 10px; padding: 14px; font-size: 1.15rem; font-weight: 800; min-height: 60px; display: grid; place-items: center; text-align: center; }

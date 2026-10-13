@@ -1,6 +1,6 @@
 # ボドゲポータル（BoardGamePortal）
 
-部屋番号で集まって 2〜6 人で遊べるブラウザボードゲーム集。GitHub Pages で公開する静的サイトで、
+部屋番号で集まって 2〜8 人で遊べるブラウザボードゲーム集。GitHub Pages で公開する静的サイトで、
 サーバーは持たない。部屋を作った人（ホスト）のブラウザが進行役になり、参加者とは WebRTC（Trystero）で直接つながる。
 
 ユーザーは「〇〇のゲームを追加して」と頼んでくる。そのときは `.claude/skills/add-game/SKILL.md` の手順に従う。
@@ -20,7 +20,8 @@ games/<id>/logic.js         ルール。DOM を使わない純粋なロジック
 games/<id>/ui.js            画面
 vendor/trystero.js          Trystero を1ファイルにまとめたもの（npm run build:vendor）
 tests/*.test.js             node:test によるルールのテスト（CI で実行）
-tests/e2e.mjs               Playwright で5人分のタブを開いて通しで遊ぶ確認（ローカルで実行）
+tests/e2e.mjs               Playwright で5人分のタブを開いて通しで遊ぶ確認（共通部分・大富豪・嵐の航海）
+tests/e2e-games.mjs         追加ゲームごとのブラウザ通し確認。新しいゲームはここにシナリオを足す
 ```
 
 ビルド工程はない。ファイルをそのまま配信する（`.github/workflows/pages.yml` が main への push でテスト→公開）。
@@ -38,6 +39,8 @@ export function view(state, playerId) { return {...}; }                         
 - 参加者から届く `action` は信用しない。型・所有・手番をすべて `act` の中で検証する。
 - 乱数は引数の `rng` を使う（テストで再現できるように）。
 - 勝敗がついたら `view` の `phase` などで画面に伝える。「ロビーに戻る」はホストの共通ボタンにある。
+  同じメンバーでもう一度遊べるよう、`restart` や `next` の操作を用意するとよい。
+- 任意で `export function canChat(state, playerId)` を定義すると、false の人のチャットをホストが止める（人狼の夜・脱落者など）。
 
 ## 画面の約束事（ui.js）
 
@@ -49,12 +52,15 @@ export function createUI(root, api) {   // api.send(action), api.toast(text), ap
 
 - 名前やチャットなどユーザー入力は必ず `h()` の子要素（文字列）として渡す。`innerHTML` は使わない。
 - 状態が届くたびに `update` が呼ばれる。選択中のカードなど画面だけの状態は createUI 内の変数で持つ。
+- 入力中の文字や描きかけの絵があるゲームは、毎回作り直すと消えてしまう。作業エリアは必要なときだけ作り直す（`games/oekaki/ui.js` 参照）。
+- 卓（`.table`）の上の `.btn` は明るい背景に濃い文字、`.btn.primary` は黄色になる。
 - スマホ幅（390px 前後）で崩れないこと。共通のクラス（`.table` `.seats` `.seat` `.hand` `.result-box` `.game-actions` など）は `css/style.css` にある。
 
 ## テスト・確認
 
 - `npm test` … ルールのテスト。新しいゲームには「ランダムに最後まで遊んで必ず終わる」「不正な操作が拒否される」「隠す情報が view に出ない」テストを必ず書く。協力ゲームは難易度のシミュレーションも。
-- `npm run e2e` … ブラウザで通し確認（要 `npm install`。この環境では Chromium が `/opt/pw-browsers` にある）。`SHOTS=<dir>` でスクリーンショットを保存。
+- `npm run e2e` / `npm run e2e:games` … ブラウザで通し確認（要 `npm install`。この環境では Chromium が `/opt/pw-browsers` にある）。
+  `SHOTS=<dir>` でスクリーンショットを保存、`MOBILE=1` でスマホ幅。スクショは必ず目で見て崩れを確認する。
 - 手で確かめるとき: `npm run serve` → `http://localhost:8080/?local=1` を複数タブで開くと、1台で複数人として遊べる。
 
 ## 注意

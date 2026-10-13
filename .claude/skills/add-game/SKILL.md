@@ -5,8 +5,9 @@ description: ボドゲポータルに新しいゲームを追加する。ユー�
 
 # ゲームを追加する
 
-まず `CLAUDE.md` の「ゲームの約束事」「画面の約束事」を読む。既存の `games/daifugo`（対戦・手番制）と
-`games/arashi`（協力・同時に出す）が見本になる。
+まず `CLAUDE.md` の「ゲームの約束事」「画面の約束事」を読む。既存のゲームが見本になる:
+`daifugo`（手番制カード）、`arashi`（同時に伏せて出す協力）、`wordwolf`（話し合い→投票）、
+`jinro`（隠れた役職・夜の行動・canChat）、`hoshi`（リアルタイム）、`sugoroku`（盤面とサイコロ）、`oekaki`（お絵描き・文字入力）。
 
 ## 1. 決める
 
@@ -32,8 +33,8 @@ npm test
 npm install && npm run e2e   # 共通部分が壊れていないか
 ```
 
-新しいゲームの画面は、`?local=1` で複数タブを開く Playwright スクリプトを書いて実際に数手遊び、
-スクリーンショットを見てレイアウト崩れがないか確認する（tests/e2e.mjs を参考に。必要なら e2e に追記してよい）。
+新しいゲームは `tests/e2e-games.mjs` の `scenarios` にシナリオを足し、
+`SHOTS=<dir> node tests/e2e-games.mjs <id>` と `MOBILE=1` 付きで実際に遊ばせて、スクリーンショットを見てレイアウト崩れがないか確認する。
 
 ## 4. 公開する
 

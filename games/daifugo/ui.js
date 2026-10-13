@@ -122,7 +122,7 @@ export function createUI(root, api) {
         ? h('ol', {}, totals.map(p => h('li', {}, `${p.name} — ${p.score}点`)))
         : h('ol', {}, ranking.map(p => h('li', {}, `${p.title} ${p.name}`))),
       !over && view.me
-        ? h('button', { class: 'btn primary', type: 'button', onclick: () => api.send({ type: 'next' }), style: { background: '#ffd36b', color: '#2b2620' } }, '次のラウンドへ')
+        ? h('button', { class: 'btn primary', type: 'button', onclick: () => api.send({ type: 'next' }) }, '次のラウンドへ')
         : null,
       over ? h('p', { class: 'small muted' }, 'ホストは「ロビーに戻る」から、もう一度遊んだり別のゲームを選べます。') : null,
     );
