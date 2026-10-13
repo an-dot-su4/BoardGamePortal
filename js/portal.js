@@ -1,11 +1,15 @@
 // ポータル（トップページ）
 import { GAMES, MODE_LABEL, findGame } from '../games/registry.js';
 import { h, normalizeCode, randomCode } from './util.js';
-import { cleanName, hostRecord, playerName, pruneHostRecords, recentRooms, saveHostRecord, setPlayerName } from './storage.js';
+import {
+  cleanName, hostRecord, playerName, playerPass, pruneHostRecords, recentRooms, saveHostRecord, setPlayerName, setPlayerPass,
+} from './storage.js';
 
 const nameInput = document.getElementById('name');
 const codeInput = document.getElementById('code');
+const passInput = document.getElementById('pass');
 nameInput.value = playerName();
+passInput.value = playerPass();
 pruneHostRecords();
 
 // ?local=1 などのテスト用パラメータを部屋ページへ引き継ぐ
@@ -23,6 +27,7 @@ function requireName() {
     return null;
   }
   setPlayerName(name);
+  setPlayerPass(passInput.value.trim());
   return name;
 }
 

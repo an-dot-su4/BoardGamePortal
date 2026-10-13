@@ -120,7 +120,7 @@ button, input, select { font: inherit; color: inherit; }
 .hero h1 { font-size: clamp(1.5rem, 4vw, 2.2rem); margin: 0 0 4px; }
 .hero p { margin: 0; color: var(--muted); }
 
-.join-box { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; margin: 20px 0; }
+.join-box { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end; margin: 20px 0; }
 @media (max-width: 640px) { .join-box { grid-template-columns: 1fr; } }
 
 .section-title { font-size: 1.1rem; margin: 28px 0 12px; }
@@ -298,3 +298,6 @@ footer.site-footer { color: var(--muted); font-size: 0.8rem; padding: 32px 16px;
 .ok-chain { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 .ok-entry .ok-canvas { max-width: 100%; }
 .ok-text { background: #fff; color: #2b2620; border-radius: 10px; padding: 14px; font-size: 1.15rem; font-weight: 800; min-height: 60px; display: grid; place-items: center; text-align: center; }
+
+.name-dialog { border: none; padding: 0; background: transparent; width: min(440px, calc(100% - 32px)); }
+.name-dialog::backdrop { background: rgb(0 0 0 / 0.45); }

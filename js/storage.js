@@ -52,6 +52,16 @@ export function setPlayerName(name) {
   save('name', name);
 }
 
+// 合言葉（任意）。設定すると、その席には同じ合言葉を知っている人しか入れない
+export function playerPass() {
+  return load('pass', '');
+}
+
+export function setPlayerPass(pass) {
+  save('pass', String(pass ?? '').slice(0, PASS_MAX));
+}
+
+export const PASS_MAX = 20;
 export const NAME_MAX = 12;
 
 export function cleanName(name) {

@@ -57,6 +57,7 @@ try {
     watch(page, name);
     await page.goto(`${BASE}/room.html?local=1#${code}`);
     await page.fill('input[placeholder="例: たろう"]', name);
+    if (name === 'しろ') await page.fill('input[placeholder="なしでもOK"]', 'ひみつ'); // しろ だけ合言葉つき
     await page.getByRole('button', { name: '参加する' }).click();
     guests.push(page);
   }
@@ -145,6 +146,27 @@ try {
   await late.fill('input[placeholder="例: たろう"]', 'おそば');
   await late.getByRole('button', { name: '参加する' }).click();
   await late.waitForSelector('text=観戦中です');
+
+  // 合言葉: しろ の席には 🔒。別のタブ（別人扱い）から同じ名前で入っても、合言葉が違えば観戦
+  await host.waitForSelector('#players li:has-text("しろ") >> text=🔒');
+  await guests[3].close();
+  await host.waitForSelector('#players li:has-text("しろ") .dot.off');
+  const shiro = await context.newPage();
+  watch(shiro, 'しろ(新)');
+  shiro.on('dialog', d => d.accept());
+  await shiro.goto(`${BASE}/room.html?local=1#${code}`);
+  await shiro.fill('input[placeholder="例: たろう"]', 'しろ');
+  await shiro.fill('input[placeholder="なしでもOK"]', 'ちがう');
+  await shiro.getByRole('button', { name: '参加する' }).click();
+  await shiro.waitForSelector('text=観戦中です');
+  await shiro.waitForSelector('.toast:has-text("合言葉が違う")');
+  // 正しい合言葉に直すと元の席に戻る
+  await shiro.getByRole('button', { name: '名前・合言葉を変える' }).click();
+  await shiro.fill('dialog input[placeholder="なしでもOK"]', 'ひみつ');
+  await shiro.getByRole('button', { name: '保存して入り直す' }).click();
+  await shiro.waitForSelector('.hand .acard');
+  await host.waitForSelector('#players li:has-text("しろ") .dot:not(.off)');
+  await shot(shiro, '09-pass-restored');
 
   assert.deepEqual(errors, [], 'ブラウザでエラーが出た');
   console.log('✅ e2e OK');

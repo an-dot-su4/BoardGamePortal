@@ -89,8 +89,8 @@ export class Host {
       this.emitError(`${game.name} は ${game.minPlayers}〜${game.maxPlayers}人で遊べます`);
       return;
     }
-    this.players = seated.map(p => ({ id: p.id, name: p.name }));
-    this.state = this.logic.setup(this.players, Math.random);
+    this.players = seated.map(p => ({ id: p.id, name: p.name, pass: p.pass ?? null }));
+    this.state = this.logic.setup(this.players.map(p => ({ id: p.id, name: p.name })), Math.random);
     this.status = 'playing';
     this.addChat(null, `${game.name} を開始しました`);
   }
@@ -98,7 +98,7 @@ export class Host {
   backToLobby() {
     this.status = 'lobby';
     this.state = null;
-    this.players = this.lobbyPlayers().map(p => ({ id: p.id, name: p.name }));
+    this.players = this.lobbyPlayers().map(p => ({ id: p.id, name: p.name, pass: p.pass ?? null }));
     this.addChat(null, 'ロビーに戻りました');
   }
 
@@ -130,24 +130,43 @@ export class Host {
     const pid = typeof msg.pid === 'string' ? msg.pid.slice(0, ID_MAX) : '';
     const name = cleanName(msg.name) || 'ななし';
     if (!pid || pid === this.pid) return;
+    // 合言葉のハッシュ（任意）。参加者はホストを見つけてから、ホストにだけこれを送る
+    const pass = typeof msg.pass === 'string' && /^[0-9a-f]{64}$/.test(msg.pass) ? msg.pass : null;
+    const unlocks = seat => !seat.pass || seat.pass === pass;
+    let denied = false;
 
     const seat = this.players.find(p => p.id === pid);
     if (seat) {
-      // 同じブラウザからの再接続
-      seat.name = this.status === 'lobby' ? name : seat.name;
-      this.bind(from, seat.id, seat.name);
+      // 同じブラウザからの再接続（合言葉つきの席は合言葉も一致したときだけ）
+      if (!seat.pass && pass && this.peers.get(from)?.pid === seat.id) {
+        // 合言葉なしで座った本人が、続けて合言葉を送ってきた → 席に合言葉をつける
+        seat.pass = pass;
+      }
+      if (unlocks(seat)) {
+        if (this.status === 'lobby') seat.name = name;
+        this.bind(from, seat.id, seat.name);
+      } else {
+        denied = true;
+        this.bind(from, null, name);
+      }
     } else if (this.status === 'lobby') {
       const max = this.game?.maxPlayers ?? 6;
       if (this.players.length < max) {
-        this.players.push({ id: pid, name });
+        this.players.push({ id: pid, name, pass });
         this.bind(from, pid, name);
       } else {
         this.bind(from, null, name);
       }
     } else {
       // ゲーム中: 同じ名前で切断中の席があれば引き継ぐ（スマホ→PC の乗り換えなど）
-      const orphan = this.players.find(p => p.name === name && !this.isConnected(p.id));
+      const sameName = this.players.filter(p => p.name === name && !this.isConnected(p.id));
+      const orphan = sameName.find(unlocks);
+      if (!orphan && sameName.length) denied = true;
       this.bind(from, orphan ? orphan.id : null, orphan ? orphan.name : name);
+    }
+    // 合言葉をこれから送ってくる参加者（hasPass で pass なし）には、まだエラーを出さない
+    if (denied && !(msg.hasPass && !pass)) {
+      this.transport.send({ t: 'err', msg: '合言葉が違うため、観戦として参加しました。合言葉を確かめて入り直してください' }, from);
     }
     this.changed();
   }
@@ -238,6 +257,7 @@ export class Host {
           id: p.id,
           name: p.name,
           connected: this.isConnected(p.id),
+          locked: !!p.pass, // 合言葉そのものは送らない
         })),
         spectators,
       },
@@ -254,10 +274,11 @@ export class Host {
 
 // 参加者側。ホストに hello を送り、届いた状態を画面に渡す。
 export class Guest {
-  constructor({ transport, pid, name }) {
+  constructor({ transport, pid, name, pass = null }) {
     this.transport = transport;
     this.pid = pid;
     this.name = name;
+    this.pass = pass; // 合言葉のハッシュ。ホストにだけ送る
     this.hostPeer = null;
     this.hostId = null;
     this.listeners = new Set();
@@ -279,6 +300,8 @@ export class Guest {
         if (this.hostPeer !== from) {
           this.hostPeer = from;
           this.setStatus('connected');
+          // ホストがわかったので、合言葉つきで名乗り直す
+          if (this.pass) this.hello(from);
         }
         this.emit(msg);
       } else if (msg.t === 'err' && from === this.hostPeer) {
@@ -293,7 +316,10 @@ export class Guest {
   }
 
   hello(to) {
-    this.transport.send({ t: 'hello', pid: this.pid, name: this.name }, to);
+    const msg = { t: 'hello', pid: this.pid, name: this.name, hasPass: !!this.pass };
+    // 合言葉は全員に届く呼びかけには入れず、ホストあてのときだけ入れる
+    if (this.pass && to && to === this.hostPeer) msg.pass = this.pass;
+    this.transport.send(msg, to);
   }
 
   setStatus(status) {

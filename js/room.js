@@ -3,8 +3,10 @@
 import { findGame, GAMES, MODE_LABEL } from '../games/registry.js';
 import { connect, isLocalMode } from './net.js';
 import { Guest, Host } from './host.js';
-import { h, normalizeCode } from './util.js';
-import { cleanName, hostRecord, playerId, playerName, rememberRoom, saveHostRecord, setPlayerName } from './storage.js';
+import { h, normalizeCode, passHash } from './util.js';
+import {
+  cleanName, hostRecord, NAME_MAX, PASS_MAX, playerId, playerName, playerPass, rememberRoom, saveHostRecord, setPlayerName, setPlayerPass,
+} from './storage.js';
 
 const $ = id => document.getElementById(id);
 const stage = $('stage');
@@ -36,24 +38,42 @@ if (!code) {
   else askName();
 }
 
-function askName() {
-  const input = h('input', { class: 'input', maxlength: 12, placeholder: '例: たろう', required: true, autocomplete: 'nickname' });
-  stage.replaceChildren(
-    h('form', {
-      class: 'panel stack',
-      onsubmit: e => {
-        e.preventDefault();
-        const name = cleanName(input.value);
-        if (!name) return;
-        setPlayerName(name);
-        start();
-      },
+// 名前と合言葉（任意）の入力。change = true なら入室後の変更（保存して読み込み直す）
+function askName(change = false) {
+  const input = h('input', { class: 'input', maxlength: NAME_MAX, placeholder: '例: たろう', required: true, autocomplete: 'nickname', value: playerName() });
+  const passInput = h('input', { class: 'input', maxlength: PASS_MAX, placeholder: 'なしでもOK', autocomplete: 'off', value: playerPass() });
+  const form = h('form', {
+    class: 'panel stack',
+    onsubmit: e => {
+      e.preventDefault();
+      const name = cleanName(input.value);
+      if (!name) return;
+      setPlayerName(name);
+      setPlayerPass(passInput.value.trim());
+      if (change) location.reload();
+      else start();
     },
-      h('h2', {}, `部屋 ${code} に参加`),
-      h('div', { class: 'field' }, h('label', {}, 'あなたの名前'), input),
-      h('button', { class: 'btn primary', type: 'submit' }, '参加する'),
+  },
+    h('h2', {}, change ? '名前・合言葉を変える' : `部屋 ${code} に参加`),
+    h('div', { class: 'field' }, h('label', {}, 'あなたの名前'), input),
+    h('div', { class: 'field' },
+      h('label', {}, '合言葉（任意）'),
+      passInput,
+      h('span', { class: 'small muted' }, '設定すると、あなたの席には同じ合言葉を知っている人しか入れなくなります。別の端末からも、同じ名前と合言葉で席に戻れます。'),
+    ),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn primary', type: 'submit' }, change ? '保存して入り直す' : '参加する'),
+      change ? h('button', { class: 'btn', type: 'button', onclick: () => dialog.close() }, 'やめる') : null,
     ),
   );
+  // 入室後の変更はゲーム画面の上に重ねて出す（ゲームの更新で消えないように）
+  const dialog = change ? h('dialog', { class: 'name-dialog', onclose: () => dialog.remove() }, form) : null;
+  if (dialog) {
+    document.body.appendChild(dialog);
+    dialog.showModal();
+  } else {
+    stage.replaceChildren(form);
+  }
   input.focus();
 }
 
@@ -75,7 +95,7 @@ async function start() {
     await client.init();
     connStatus = 'connected';
   } else {
-    client = new Guest({ transport, pid, name });
+    client = new Guest({ transport, pid, name, pass: await passHash(code, playerPass()) });
   }
   client.subscribe(onEvent);
   addEventListener('pagehide', () => client.close());
@@ -132,11 +152,13 @@ function renderPlayers() {
         h('span', {}, p.name),
         p.id === room.hostId ? h('span', { class: 'tag' }, 'ホスト') : null,
         p.id === you ? h('span', { class: 'tag' }, 'あなた') : null,
+        p.locked ? h('span', { title: '合言葉つきの席' }, '🔒') : null,
         p.connected ? null : h('span', { class: 'small muted' }, '切断中'),
       ),
     ),
   );
   $('spectators').textContent = room.spectators.length ? `観戦: ${room.spectators.join('、')}` : '';
+  $('change-name').hidden = isHost;
 }
 
 function renderHostControls() {
@@ -176,6 +198,8 @@ function renderChat() {
   );
   if (atBottom) log.scrollTop = log.scrollHeight;
 }
+
+$('change-name').addEventListener('click', () => askName(true));
 
 $('chat-form').addEventListener('submit', e => {
   e.preventDefault();

@@ -70,5 +70,14 @@ export function randomId() {
   return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// 合言葉はそのまま送らず、部屋ごとに違うハッシュにして送る（他の部屋で使い回されないように）
+export async function passHash(code, pass) {
+  const text = String(pass ?? '').normalize('NFKC').trim();
+  if (!text) return null;
+  const data = new TextEncoder().encode(`bgp:${code}:${text}`);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // ゲームのルール違反を表すエラー。ホストはこれをプレイヤーにそのまま表示する。
 export class GameError extends Error {}
