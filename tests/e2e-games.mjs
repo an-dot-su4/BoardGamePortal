@@ -3,7 +3,7 @@
 //   SHOTS=dir で各ゲームのスクリーンショットを保存、MOBILE=1 でスマホ幅（390px）
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
 const PORT = 8138;
@@ -12,7 +12,18 @@ const SHOTS = process.env.SHOTS;
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 
 const server = spawn('npx', ['--yes', 'http-server', '-p', String(PORT), '-c-1', '-s', '.'], { stdio: 'ignore' });
-const browser = await chromium.launch();
+// この開発環境では Playwright 同梱版と違う Chromium が入っていることがあるので、あればそれを使う
+// （通常の Chrome は操作の待ちが長く20倍以上遅いので、ヘッドレス版を優先する）
+function localChromium() {
+  const root = '/opt/pw-browsers';
+  if (!existsSync(root)) return undefined;
+  const shell = readdirSync(root).find(d => d.startsWith('chromium_headless_shell-'));
+  const path = shell && `${root}/${shell}/chrome-headless-shell-linux64/chrome-headless-shell`;
+  if (path && existsSync(path)) return path;
+  return existsSync(`${root}/chromium`) ? `${root}/chromium` : undefined;
+}
+const executablePath = process.env.CHROMIUM_PATH ?? localChromium();
+const browser = await chromium.launch(executablePath ? { executablePath } : {});
 const errors = [];
 
 async function shot(page, name) {
@@ -32,7 +43,7 @@ async function waitForServer() {
 // gameName のゲームで部屋を作り、names の人数でゲーム開始まで進める
 const VIEWPORT = process.env.MOBILE ? { width: 390, height: 844 } : { width: 1100, height: 900 };
 
-async function openGame(gameName, names, viewport = VIEWPORT) {
+async function openGame(gameName, names, viewport = VIEWPORT, beforeStart = null) {
   const context = await browser.newContext({ viewport });
   const pages = [];
   for (const name of names) {
@@ -55,6 +66,7 @@ async function openGame(gameName, names, viewport = VIEWPORT) {
     await page.getByRole('button', { name: '参加する' }).click();
   }
   await host.waitForFunction(n => document.querySelectorAll('#players li').length === n, names.length);
+  if (beforeStart) await beforeStart(host, guests);
   await host.getByRole('button', { name: '▶ ゲーム開始' }).click();
   for (const p of pages) await p.waitForSelector('.game-root .table');
   return { pages, context };
@@ -64,6 +76,62 @@ const pause = (page, ms = 120) => page.waitForTimeout(ms);
 const has = async (page, selector) => (await page.locator(selector).count()) > 0;
 
 const scenarios = {
+  async tenka() {
+    let banned = null;
+    const { pages } = await openGame('天下札', ['あき', 'はる'], VIEWPORT, async (host, [guest]) => {
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+      await host.locator('select:has(option[value="heian-first"])').selectOption('heian-first');
+      await guest.waitForSelector('select:has(option[value="heian-first"]:checked)');
+      await host.locator('details.tk-ban summary').click();
+      // おすすめセットに入っている検非違使を BAN する（代わりが入るはず）
+      await host.locator('.tk-ban-grid [data-card="kebiishi"]').click();
+      await host.waitForSelector('.tk-ban-grid [data-card="kebiishi"].tk-dim');
+      banned = 'kebiishi';
+      await guest.waitForSelector('.tk-ban-grid [data-card="kebiishi"]');
+      await shot(host, 'tenka-0-lobby');
+    });
+    for (const p of pages) await p.waitForSelector('.tk-supply');
+    for (const p of pages) assert.equal(await p.locator(`.tk-supply [data-card="${banned}"]`).count(), 0, 'BAN した札が出た');
+    assert.equal(await pages[0].locator('.tk-supply .tk-row').first().locator('.tk-card').count(), 10);
+
+    // 人間2人は「お金だけ」で遊ぶ。CPU の手番は自動で進む
+    let humanTurns = 0;
+    for (let i = 0; i < 120 && humanTurns < 8; i++) {
+      for (const p of pages) {
+        if (await has(p, '.tk-prompt')) {
+          if (await has(p, '.tk-prompt button:text("決定")')) {
+            const btn = p.locator('.tk-prompt button:text("決定")');
+            const cards = p.locator('.tk-hand button.tk-card');
+            for (let k = 0; k < (await cards.count()) && (await btn.isDisabled()); k++) await cards.nth(k).click();
+            await btn.click();
+          } else await p.locator('.tk-prompt button').first().click();
+          continue;
+        }
+        if (!(await has(p, 'text=あなたの手番'))) continue;
+        if (await has(p, 'button:text("💰 財宝をすべて出す")')) await p.getByRole('button', { name: '💰 財宝をすべて出す' }).click();
+        const affordable = p.locator('.tk-supply .tk-selected');
+        if ((await affordable.count()) > 0) {
+          await affordable.last().click();
+          if (humanTurns === 1) await shot(p, 'tenka-2-zoom');
+          await p.locator('.tk-zoom button:has-text("文で購入")').click();
+        }
+        if (humanTurns === 2) await shot(p, 'tenka-1-game');
+        if (await has(p, 'button:text("購入フェーズへ")')) {
+          await p.getByRole('button', { name: '購入フェーズへ' }).click();
+          await p.waitForSelector('button:text("手番を終える")');
+        }
+        await p.getByRole('button', { name: '手番を終える' }).click();
+        await p.waitForSelector('button:text("手番を終える")', { state: 'detached' });
+        humanTurns++;
+      }
+      await pause(pages[0], 150);
+    }
+    assert.ok(humanTurns >= 8, `手番が回らない (${humanTurns})`);
+    const log = await pages[0].locator('.log').innerText();
+    assert.match(log, /CPU/, 'CPU が手番を進めていない');
+  },
+
   async wordwolf() {
     const { pages } = await openGame('ワード人狼', ['あ', 'い', 'う', 'え']);
     const words = await Promise.all(pages.map(p => p.locator('.big-word').innerText()));

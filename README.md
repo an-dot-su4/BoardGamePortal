@@ -2,7 +2,10 @@
 
 部屋番号を共有するだけで、友だちと 2〜8 人で遊べるブラウザボードゲーム集です。ログイン不要。
 
-**遊ぶ: https://an-dot-su4.github.io/BoardGamePortal/**
+## 公開URL
+
+- ポータル: https://an-dot-su4.github.io/BoardGamePortal/
+- 天下札のカード一覧: https://an-dot-su4.github.io/BoardGamePortal/games/tenka/gallery.html
 
 ## 遊び方
 
@@ -25,6 +28,7 @@
 | 🌠 ほしならべ（オリジナル） | 協力 | 2〜6人 |
 | 🎲 わいわいすごろく | 対戦 | 2〜6人 |
 | 🎨 お絵描き伝言 | 協力 | 3〜8人 |
+| ⛩️ 天下札（デッキ構築・CPU対戦あり） | 対戦 | 2〜4人 |
 
 ## 仕組み
 

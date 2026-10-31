@@ -301,3 +301,84 @@ footer.site-footer { color: var(--muted); font-size: 0.8rem; padding: 32px 16px;
 
 .name-dialog { border: none; padding: 0; background: transparent; width: min(440px, calc(100% - 32px)); }
 .name-dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+
+/* ---- 天下札 ---- */
+.tk-card {
+  --frame: #8a6a3a; --paper: #f4ead6; --band: #5c3b22;
+  position: relative; display: flex; flex-direction: column; text-align: left; padding: 6px; gap: 4px;
+  width: 190px; border-radius: 12px; background: var(--paper); color: #2b2620;
+  border: 4px solid var(--frame); box-shadow: 0 2px 6px rgb(0 0 0 / 0.3); font: inherit; cursor: default;
+}
+button.tk-card { cursor: pointer; }
+button.tk-card:hover { transform: translateY(-2px); }
+.tk-action { --frame: #8a6a3a; --paper: #f4ead6; --band: #5c3b22; }
+.tk-treasure { --frame: #c99a2e; --paper: #fbefc5; --band: #8a6410; }
+.tk-victory { --frame: #4f8a3a; --paper: #e3f0d6; --band: #2f5a22; }
+.tk-curse { --frame: #6a4a8a; --paper: #e6dcef; --band: #4a2f66; }
+.tk-attack { --frame: #c0392b; --paper: #f7e1d8; --band: #8e2418; }
+.tk-reaction { --frame: #2f5a99; --paper: #dde7f5; --band: #1f3d6e; }
+.tk-duration { --frame: #d9822b; --paper: #fbe6cf; --band: #9a5310; }
+.tk-name {
+  background: var(--band); color: #fff; font-weight: 800; text-align: center; border-radius: 6px;
+  padding: 2px 4px; font-size: 1.05rem; letter-spacing: 0.15em; font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+}
+.tk-art { border-radius: 6px; overflow: hidden; aspect-ratio: 200 / 130; border: 1px solid rgb(0 0 0 / 0.2); }
+.tk-art svg { display: block; width: 100%; height: 100%; }
+.tk-text { font-size: 0.82rem; line-height: 1.45; min-height: 64px; display: grid; align-content: center; gap: 2px; padding: 2px 2px 0; }
+.tk-line-big { text-align: center; font-size: 1rem; }
+.tk-chip { display: inline-flex; align-items: baseline; gap: 1px; border-radius: 6px; padding: 0 5px; margin: 1px 2px; font-weight: 800; color: #fff; }
+.tk-chip small { font-size: 0.72em; font-weight: 700; }
+.tk-chip-card { background: #2f5a99; }
+.tk-chip-action { background: #3d8a4f; }
+.tk-chip-buy { background: #d9822b; }
+.tk-chip-coin { background: #b8860b; }
+.tk-chip-vp { background: #4f8a3a; font-size: 1.2em; }
+.tk-chip-curse { background: #6a4a8a; font-size: 1.2em; }
+.tk-foot { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #5a4a3a; }
+.tk-cost {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-weight: 800; font-size: 0.85rem;
+  background: radial-gradient(circle at 35% 30%, #f7d77a, #c99a2e); color: #3b2a0a; border: 1px solid #8a6410;
+}
+.tk-type { flex: 1; font-weight: 700; }
+.tk-set { border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; }
+.tk-count, .tk-badge {
+  position: absolute; top: -8px; right: -8px; min-width: 26px; height: 26px; border-radius: 13px; padding: 0 6px;
+  display: grid; place-items: center; background: #2b2620; color: #fff; font-weight: 800; font-size: 0.85rem; border: 2px solid #fff;
+}
+.tk-badge { background: #c0392b; left: -8px; right: auto; }
+.tk-mini { width: 108px; padding: 4px; border-width: 3px; gap: 3px; }
+.tk-mini .tk-name { font-size: 0.8rem; letter-spacing: 0.05em; }
+.tk-mini .tk-foot { font-size: 0.62rem; gap: 3px; }
+.tk-mini .tk-cost { width: 20px; height: 20px; font-size: 0.75rem; }
+.tk-mini-text { font-size: 0.72rem; text-align: center; font-weight: 700; }
+.tk-dim { opacity: 0.4; filter: grayscale(0.6); }
+.tk-selected { outline: 4px solid #ffd36b; outline-offset: 2px; transform: translateY(-6px); }
+.tk-gallery { display: flex; flex-wrap: wrap; gap: 18px; }
+.tk-table { display: grid; gap: 12px; }
+.tk-status { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.tk-stat { background: rgb(0 0 0 / 0.25); border-radius: 999px; padding: 2px 12px; font-size: 0.9rem; }
+.tk-stat b { font-size: 1.1rem; margin-left: 2px; }
+.tk-coins b { color: #ffd36b; }
+.tk-row-title { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; font-weight: 700; }
+.tk-row { display: flex; flex-wrap: wrap; gap: 10px; padding: 6px 4px; }
+.tk-supply { background: rgb(0 0 0 / 0.18); border-radius: 12px; padding: 8px; }
+.tk-hand { display: flex; gap: 10px; overflow-x: auto; padding: 10px 4px 12px; }
+.tk-hand .tk-card { width: 150px; flex: none; }
+.tk-hand .tk-text { font-size: 0.74rem; min-height: 56px; }
+.tk-play { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+.tk-pill { font-size: 0.72rem; border-radius: 6px; padding: 0 6px; color: #fff; background: #5c3b22; }
+.tk-pill-attack { background: #c0392b; }
+.tk-pill-treasure { background: #b8860b; }
+.tk-pill-victory { background: #4f8a3a; }
+.tk-prompt { border: 2px solid #ffd36b; }
+.tk-zoom { position: fixed; inset: 0; background: rgb(0 0 0 / 0.6); display: grid; place-items: center; z-index: 30; padding: 16px; }
+.tk-zoom-inner { display: grid; gap: 10px; justify-items: center; }
+.tk-zoom-inner .tk-card { width: min(280px, 80vw); }
+.tk-zoom-inner .tk-text { font-size: 0.95rem; }
+.tk-set-check { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+.tk-ban summary { cursor: pointer; font-weight: 700; }
+.tk-ban-grid { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 8px; }
+@media (max-width: 480px) {
+  .tk-mini { width: 92px; }
+  .tk-hand .tk-card { width: 132px; }
+}

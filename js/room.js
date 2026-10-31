@@ -153,6 +153,10 @@ function renderPlayers() {
         p.id === room.hostId ? h('span', { class: 'tag' }, 'ホスト') : null,
         p.id === you ? h('span', { class: 'tag' }, 'あなた') : null,
         p.locked ? h('span', { title: '合言葉つきの席' }, '🔒') : null,
+        p.bot ? h('span', { class: 'tag' }, '🤖 CPU') : null,
+        p.bot && isHost && room.status === 'lobby'
+          ? h('button', { class: 'btn small ghost', type: 'button', 'aria-label': `${p.name} を外す`, onclick: () => client.removeBot(p.id) }, '✕')
+          : null,
         p.connected ? null : h('span', { class: 'small muted' }, '切断中'),
       ),
     ),
@@ -168,15 +172,23 @@ function renderHostControls() {
   const game = findGame(room.gameId);
   if (room.status === 'lobby') {
     const count = room.players.length;
-    const ok = count >= game.minPlayers && count <= game.maxPlayers;
+    const ok = count >= game.minPlayers && count <= game.maxPlayers && !room.optionsError;
     const select = h('select', { class: 'input', onchange: e => client.setGame(e.target.value), 'aria-label': 'ゲーム' },
       GAMES.map(g => h('option', { value: g.id, selected: g.id === room.gameId }, `${g.icon} ${g.name}`)),
     );
-    box.replaceChildren(
+    // replaceChildren は null を「null」という文字にしてしまうので取り除く
+    const items = [
       h('div', { class: 'field' }, h('label', {}, 'ゲーム'), select),
+      room.canBot && count < game.maxPlayers
+        ? h('button', { class: 'btn small', type: 'button', onclick: () => client.addBot() }, '🤖 CPUを追加')
+        : null,
       h('button', { class: 'btn primary', type: 'button', disabled: !ok, onclick: () => client.start() }, '▶ ゲーム開始'),
-      ok ? null : h('p', { class: 'small muted' }, `${game.minPlayers}〜${game.maxPlayers}人で開始できます（今 ${count}人）`),
-    );
+      count < game.minPlayers || count > game.maxPlayers
+        ? h('p', { class: 'small muted' }, `${game.minPlayers}〜${game.maxPlayers}人で開始できます（今 ${count}人）`)
+        : null,
+      room.optionsError ? h('p', { class: 'small', style: { color: 'var(--danger)' } }, room.optionsError) : null,
+    ];
+    box.replaceChildren(...items.filter(Boolean));
   } else {
     box.replaceChildren(
       h('button', {
@@ -232,24 +244,27 @@ async function shareInvite() {
 }
 $('invite').addEventListener('click', shareInvite);
 
+// ロビー。ゲームの設定欄（BAN など）は操作中に消えないよう、設定が変わったときだけ描き直す
+let lobby = null; // { gameId, root, status, optionsBox, optionsKey }
+const uiModules = {}; // ゲームID -> 読み込み済みの ui.js
+
 function renderLobby() {
   destroyGameUI();
   const { room } = snapshot;
   const game = findGame(room.gameId);
   const seated = room.players.some(p => p.id === snapshot.you);
-  stage.replaceChildren(
-    h('div', { class: 'lobby' },
+
+  if (!lobby || lobby.gameId !== room.gameId || !stage.contains(lobby.root)) {
+    const status = h('p', { class: 'small muted', style: { textAlign: 'center' } });
+    const optionsBox = h('div', {});
+    const root = h('div', { class: 'lobby' },
       h('section', { class: 'panel' },
         h('p', { class: 'muted small', style: { textAlign: 'center', margin: 0 } }, '部屋番号'),
         h('div', { class: 'big-code' }, code),
         h('div', { class: 'row', style: { justifyContent: 'center' } },
           h('button', { class: 'btn', type: 'button', onclick: shareInvite }, '🔗 招待リンクを送る'),
         ),
-        h('p', { class: 'small muted', style: { textAlign: 'center' } },
-          isHost
-            ? 'みんながそろったら、右の「ゲーム開始」を押してください。'
-            : seated ? 'ホストがゲームを開始するのを待っています…' : '定員に達しているため観戦として参加しています。',
-        ),
+        status,
       ),
       h('section', { class: 'panel stack' },
         h('div', { class: 'row' },
@@ -261,8 +276,35 @@ function renderLobby() {
         h('p', { style: { margin: 0 } }, game.summary),
         h('ol', { style: { margin: 0, paddingLeft: '1.3em' } }, game.rules.map(r => h('li', {}, r))),
       ),
-    ),
-  );
+      optionsBox,
+    );
+    stage.replaceChildren(root);
+    lobby = { gameId: room.gameId, root, status, optionsBox, optionsKey: null };
+  }
+
+  lobby.status.textContent = isHost
+    ? 'みんながそろったら、右の「ゲーム開始」を押してください。'
+    : seated ? 'ホストがゲームを開始するのを待っています…' : '定員に達しているため観戦として参加しています。';
+  renderLobbyOptions(game, room);
+}
+
+// ゲームが ui.js に renderOptions を用意していれば、ロビーに設定欄を出す（ホストだけ変更できる）
+function renderLobbyOptions(game, room) {
+  const key = JSON.stringify([room.options, isHost]);
+  if (lobby.optionsKey === key) return;
+  const mod = uiModules[game.id];
+  if (!mod) {
+    game.ui().then(m => {
+      uiModules[game.id] = m;
+      if (lobby?.gameId === game.id) renderLobbyOptions(game, snapshot.room);
+    });
+    return;
+  }
+  lobby.optionsKey = key;
+  if (!mod.renderOptions || !room.options) return lobby.optionsBox.replaceChildren();
+  const box = h('section', { class: 'panel stack' });
+  mod.renderOptions(box, room.options, { editable: isHost, onChange: options => client.setOptions(options) });
+  lobby.optionsBox.replaceChildren(box);
 }
 
 function renderGame() {

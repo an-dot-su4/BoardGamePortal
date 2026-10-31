@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>天下札 カード一覧 | ボドゲポータル</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛩️</text></svg>">
+  <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="../../">🎲 ボドゲポータル</a>
+    <strong>⛩️ 天下札 カード一覧</strong>
+  </header>
+  <main class="wrap stack" style="padding-top: 16px; padding-bottom: 32px;" id="main"></main>
+  <script type="module">
+    import { h } from '../../js/util.js';
+    import { CARDS, SETS } from './cards/index.js';
+    import { HAS_ART } from './art.js';
+    import { cardEl } from './cardview.js';
+
+    const main = document.getElementById('main');
+    const all = Object.values(CARDS);
+    const section = (title, note, cards) =>
+      h('section', { class: 'stack' },
+        h('h2', { style: { margin: '8px 0 0' } }, title),
+        note ? h('p', { class: 'muted small', style: { margin: 0 } }, note) : null,
+        h('div', { class: 'tk-gallery' }, cards.map(c => cardEl(c))),
+      );
+    main.append(
+      section('🎨 イラストの見本', '絵柄・配色・レイアウトの確認用。枠の色は種類（行動=茶、財宝=金、勝利点=緑、攻撃=朱、守り=藍、呪い=紫）。', all.filter(c => HAS_ART.has(c.id))),
+      section('基本カード', null, all.filter(c => c.set === 'basic')),
+      ...SETS.filter(s => s.ready).map(s => section(`${s.name}（${s.feature}）`, 'イラストのない札は仮の絵（名前の一文字）です。', all.filter(c => c.set === s.id).sort((a, b) => a.cost - b.cost))),
+    );
+  </script>
+</body>
+</html>

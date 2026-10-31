@@ -98,6 +98,15 @@ export function pruneHostRecords() {
   }
 }
 
+// ホストが選んだゲームごとの設定（BAN したカードなど）。次に部屋を作ったときも使う
+export function gameOptions(gameId) {
+  return load('options:' + gameId, null);
+}
+
+export function saveGameOptions(gameId, options) {
+  save('options:' + gameId, options);
+}
+
 // 最近入った部屋（ポータルに表示）
 export function recentRooms() {
   return load('recent', []);

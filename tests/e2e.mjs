@@ -4,7 +4,7 @@
 // ?local=1 モード（BroadcastChannel）を使うので、インターネット接続は不要。
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
 const PORT = 8137;
@@ -13,7 +13,18 @@ const SHOTS = process.env.SHOTS;
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 
 const server = spawn('npx', ['--yes', 'http-server', '-p', String(PORT), '-c-1', '-s', '.'], { stdio: 'ignore' });
-const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+// この開発環境では Playwright 同梱版と違う Chromium が入っていることがあるので、あればそれを使う
+// （通常の Chrome は操作の待ちが長く20倍以上遅いので、ヘッドレス版を優先する）
+function localChromium() {
+  const root = '/opt/pw-browsers';
+  if (!existsSync(root)) return undefined;
+  const shell = readdirSync(root).find(d => d.startsWith('chromium_headless_shell-'));
+  const path = shell && `${root}/${shell}/chrome-headless-shell-linux64/chrome-headless-shell`;
+  if (path && existsSync(path)) return path;
+  return existsSync(`${root}/chromium`) ? `${root}/chromium` : undefined;
+}
+const executablePath = process.env.CHROMIUM_PATH ?? localChromium();
+const browser = await chromium.launch(executablePath ? { executablePath } : {});
 const errors = [];
 
 async function shot(page, name) {

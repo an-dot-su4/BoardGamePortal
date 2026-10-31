@@ -48,6 +48,11 @@ export function view(state, playerId) { return {...}; }                         
 - 乱数は引数の `rng` を使う（テストで再現できるように）。
 - 勝敗がついたら `view` の `phase` などで画面に伝える。「ロビーに戻る」はホストの共通ボタンにある。
   同じメンバーでもう一度遊べるよう、`restart` や `next` の操作を用意するとよい。
+- 任意で `export function normalizeOptions(o)` を定義すると、ホストがロビーでゲームの設定を変えられる
+  （`setup(players, rng, options)` の3つ目に届く。ホストのブラウザにゲームごとに保存される）。
+  `validateOptions(options, 人数)` がエラー文を返すと開始できない。設定欄の画面は ui.js の `renderOptions(root, options, { editable, onChange })`。
+- 任意で `export function bot(state, playerId, rng)` を定義すると、ロビーに「CPUを追加」が出る。
+  CPU が今できる操作を1つ返す（できなければ null）。ホストが少し待ってから実行する。CPU は players に `bot: true` で入る。
 - 任意で `export function canChat(state, playerId)` を定義すると、false の人のチャットをホストが止める（人狼の夜・脱落者など）。
 
 ## 画面の約束事（ui.js）
@@ -62,6 +67,15 @@ export function createUI(root, api) {   // api.send(action), api.toast(text), ap
 - 状態が届くたびに `update` が呼ばれる。選択中のカードなど画面だけの状態は createUI 内の変数で持つ。
 - 入力中の文字や描きかけの絵があるゲームは、毎回作り直すと消えてしまう。作業エリアは必要なときだけ作り直す（`games/oekaki/ui.js` 参照）。
 - 卓（`.table`）の上の `.btn` は明るい背景に濃い文字、`.btn.primary` は黄色になる。
+- `element.replaceChildren(a, null)` は null を「null」という文字で表示してしまう。null を含みうるときは `h()` で包むか取り除く。
+
+## 天下札（games/tenka）
+
+- ドミニオン風のデッキ構築。効果はドミニオンに寄せるが、名前・説明文・絵はオリジナル（ドミニオンの名称・文章は使わない）。
+- `cards/` に時代ごとのカード定義（`index.js` の `SETS` で `ready: true` の時代だけ選べる）。効果は `engine.js` の命令スタックで処理し、
+  選択は `e.ask(...)` で止めて `steps` で続ける（ask はハンドラの最後に呼ぶ）。攻撃は `e.attack(step)`、結界などの守りは自動で公開。
+- `bot.js` の CPU はゲーム中の対戦相手とシミュレーションの両方で使う。新しいカードには `AI` の目安と、選択の答え方を足す。
+- `art.js` が SVG のイラスト。描いていない札は名前の一文字の仮の絵になる。一覧は `gallery.html`。
 - スマホ幅（390px 前後）で崩れないこと。共通のクラス（`.table` `.seats` `.seat` `.hand` `.result-box` `.game-actions` など）は `css/style.css` にある。
 
 ## テスト・確認

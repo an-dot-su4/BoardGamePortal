@@ -2,12 +2,14 @@
 // ゲームの正しい状態はここだけが持ち、各プレイヤーには「その人に見せてよい情報（view）」だけを送る。
 // 参加者から届くメッセージは信用せず、すべてここで検証する。
 import { GameError } from './util.js';
-import { cleanName } from './storage.js';
+import { cleanName, gameOptions, saveGameOptions } from './storage.js';
 import { findGame } from '../games/registry.js';
 
 const CHAT_KEEP = 40;
 const CHAT_MAX = 200;
 const ID_MAX = 40;
+const BOT_DELAY_MS = 700; // CPU が考えているように見える待ち時間
+const BOT_NAMES = ['CPU 松', 'CPU 竹', 'CPU 梅', 'CPU 鶴', 'CPU 亀'];
 
 export class Host {
   // record: 保存済みの部屋 { gameId, status, players, state, chat }
@@ -18,10 +20,12 @@ export class Host {
     this.pid = pid;
     this.gameId = record.gameId;
     this.status = record.status ?? 'lobby';
-    // ロビー中に読み込み直したときは、つながっている人が入り直すので自分だけにする
-    this.players = this.status === 'lobby' ? [] : (record.players ?? []);
+    // ロビー中に読み込み直したときは、つながっている人が入り直すので自分（と CPU）だけにする
+    this.players = this.status === 'lobby' ? (record.players ?? []).filter(p => p.bot) : (record.players ?? []);
     this.state = record.state ?? null;
     this.chat = record.chat ?? [];
+    this.options = record.options ?? null; // ゲームごとの設定（BAN・使う時代など）。null なら loadLogic で読み込む
+    this.botTimer = null;
     this.peers = new Map(); // 接続ID -> { pid, name }（観戦者は pid = null）
     this.listeners = new Set();
     this.logic = null;
@@ -39,12 +43,14 @@ export class Host {
   async init() {
     await this.loadLogic();
     this.broadcast();
+    this.scheduleBots();
   }
 
   async loadLogic() {
     const game = findGame(this.gameId);
     if (!game) throw new Error('不明なゲームです: ' + this.gameId);
     this.logic = await game.logic();
+    if (!this.options) this.options = this.logic.normalizeOptions?.(gameOptions(this.gameId)) ?? null;
   }
 
   get game() {
@@ -77,8 +83,38 @@ export class Host {
   async setGame(gameId) {
     if (this.status !== 'lobby' || !findGame(gameId)) return;
     this.gameId = gameId;
+    this.options = null;
     await this.loadLogic();
+    // CPU に対応していないゲームなら CPU は外す
+    if (!this.logic.bot) this.players = this.players.filter(p => !p.bot);
     this.changed();
+  }
+
+  // ゲームの設定（ホストだけが変えられる）。ブラウザにも保存して次回の部屋でも使う
+  setOptions(options) {
+    if (this.status !== 'lobby' || !this.logic?.normalizeOptions) return;
+    this.options = this.logic.normalizeOptions(options);
+    saveGameOptions(this.gameId, this.options);
+    this.changed();
+  }
+
+  addBot() {
+    if (this.status !== 'lobby' || !this.logic?.bot) return;
+    if (this.players.length >= (this.game?.maxPlayers ?? 6)) return this.emitError('これ以上は入れません');
+    const used = new Set(this.players.map(p => p.name));
+    const name = BOT_NAMES.find(n => !used.has(n)) ?? `CPU ${this.players.length + 1}`;
+    this.players.push({ id: 'bot-' + Math.random().toString(36).slice(2, 10), name, bot: true });
+    this.changed();
+  }
+
+  removeBot(id) {
+    if (this.status !== 'lobby') return;
+    this.players = this.players.filter(p => !(p.bot && p.id === id));
+    this.changed();
+  }
+
+  optionsError(count) {
+    return this.logic?.validateOptions?.(this.options, count) ?? null;
   }
 
   start() {
@@ -89,8 +125,10 @@ export class Host {
       this.emitError(`${game.name} は ${game.minPlayers}〜${game.maxPlayers}人で遊べます`);
       return;
     }
-    this.players = seated.map(p => ({ id: p.id, name: p.name, pass: p.pass ?? null }));
-    this.state = this.logic.setup(this.players.map(p => ({ id: p.id, name: p.name })), Math.random);
+    const problem = this.optionsError(seated.length);
+    if (problem) return this.emitError(problem);
+    this.players = seated.map(p => ({ id: p.id, name: p.name, pass: p.pass ?? null, bot: !!p.bot }));
+    this.state = this.logic.setup(this.players.map(p => ({ id: p.id, name: p.name, bot: !!p.bot })), Math.random, this.options ?? undefined);
     this.status = 'playing';
     this.addChat(null, `${game.name} を開始しました`);
   }
@@ -98,12 +136,38 @@ export class Host {
   backToLobby() {
     this.status = 'lobby';
     this.state = null;
-    this.players = this.lobbyPlayers().map(p => ({ id: p.id, name: p.name, pass: p.pass ?? null }));
+    this.players = this.lobbyPlayers().map(p => ({ id: p.id, name: p.name, pass: p.pass ?? null, bot: !!p.bot }));
     this.addChat(null, 'ロビーに戻りました');
   }
 
   close() {
+    clearTimeout(this.botTimer);
     this.transport.leave();
+  }
+
+  // ---- CPU ----
+
+  // CPU が操作できる場面なら、少し待ってから1手だけ進める（進めた結果また呼ばれる）
+  scheduleBots() {
+    if (this.botTimer || this.status !== 'playing' || !this.state || !this.logic?.bot) return;
+    const bots = this.players.filter(p => p.bot);
+    if (!bots.length) return;
+    this.botTimer = setTimeout(() => {
+      this.botTimer = null;
+      if (this.status !== 'playing' || !this.state) return;
+      for (const b of bots) {
+        let action = null;
+        try {
+          action = this.logic.bot(this.state, b.id, Math.random);
+        } catch (err) {
+          console.error(err);
+        }
+        if (action) {
+          this.apply(b.id, action, msg => console.warn('CPU の操作が拒否されました', msg, action));
+          return;
+        }
+      }
+    }, BOT_DELAY_MS);
   }
 
   // ---- 参加者からのメッセージ ----
@@ -189,6 +253,7 @@ export class Host {
 
   isConnected(pid) {
     if (pid === this.pid) return true;
+    if (this.players.some(p => p.id === pid && p.bot)) return true;
     for (const peer of this.peers.values()) if (peer.pid === pid) return true;
     return false;
   }
@@ -234,8 +299,10 @@ export class Host {
       players: this.players,
       state: this.state,
       chat: this.chat,
+      options: this.options,
     });
     this.broadcast();
+    this.scheduleBots();
   }
 
   broadcast() {
@@ -258,8 +325,12 @@ export class Host {
           name: p.name,
           connected: this.isConnected(p.id),
           locked: !!p.pass, // 合言葉そのものは送らない
+          bot: !!p.bot,
         })),
         spectators,
+        options: this.options,
+        optionsError: this.status === 'lobby' ? this.optionsError(this.lobbyPlayers().length) : null,
+        canBot: !!this.logic?.bot,
       },
       you: pid,
       view: this.status === 'playing' && this.state && this.logic ? this.logic.view(this.state, pid) : null,
