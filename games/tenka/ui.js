@@ -77,6 +77,7 @@ export function renderOptions(root, options, { editable, onChange }) {
 
 export function createUI(root, api) {
   let view = null;
+  let ctx = {}; // 部屋の情報（isHost など）
   let picked = []; // 手札から選んでいる札（選択を求められたとき）
   let zoomed = null; // 拡大表示中の札
   let overpay = 0; // 棟梁などで多く払う額
@@ -141,6 +142,7 @@ export function createUI(root, api) {
           h('summary', { class: 'small' }, 'ルール'),
           h('ol', { class: 'small' }, api.rules.map(r => h('li', {}, r))),
         ),
+        linksEl(),
         h('div', { class: 'log', style: { marginTop: '8px' } }, view.log.slice().reverse().map(l => h('div', { class: 'small muted' }, l))),
       ),
       ...(zoomed ? [zoomBox(myTurn)] : []),
@@ -164,8 +166,12 @@ export function createUI(root, api) {
           h('div', { class: 'game-actions' },
             h('button', { class: 'btn', type: 'button', onclick: () => setLayout('pc') }, '🖥 PC表示にする'),
             h('button', { class: 'btn', type: 'button', onclick: () => { peek = true; menuOpen = false; render(); } }, '💬 部屋の画面（チャット）'),
+            ctx.isHost && api.backToLobby
+              ? h('button', { class: 'btn', type: 'button', onclick: () => { menuOpen = false; api.backToLobby(); } }, view.phase === 'over' ? '🏠 ロビーに戻る' : '🏠 ロビーに戻る（ゲームを終える）')
+              : null,
             h('button', { class: 'btn', type: 'button', onclick: () => { menuOpen = false; render(); } }, '閉じる'),
           ),
+          linksEl(),
           h('details', {},
             h('summary', { class: 'small' }, 'ルール'),
             h('ol', { class: 'small' }, api.rules.map(r => h('li', {}, r))),
@@ -194,6 +200,12 @@ export function createUI(root, api) {
       ),
       ...(zoomed ? [zoomBox(myTurn)] : []),
     );
+  }
+
+  // カード一覧などのリンク（別タブで開くので、ゲームは切れない）
+  function linksEl() {
+    if (!api.links?.length) return null;
+    return h('p', { class: 'small game-links' }, api.links.map(l => h('a', { href: l.href, target: '_blank', rel: 'noopener' }, l.label)));
   }
 
   function statusBar(myTurn, compact = false) {
@@ -411,13 +423,19 @@ export function createUI(root, api) {
     return h('div', { class: 'result-box' },
       h('h3', {}, '🏯 天下統一！'),
       h('ol', {}, view.result.map(r => h('li', {}, `${r.win ? '👑 ' : ''}${nameOf(r.id)} — ${r.vp}点（${r.turns}手番）`))),
-      h('p', { class: 'small' }, 'ホストは「ロビーに戻る」から、設定を変えてもう一度遊べます。'),
+      ctx.isHost && api.backToLobby
+        ? h('div', { class: 'game-actions' },
+            h('button', { class: 'btn primary', type: 'button', onclick: () => api.backToLobby() }, '🏠 ロビーに戻る'),
+            h('span', { class: 'small' }, 'ロビーで設定を変えて、もう一度遊べます'),
+          )
+        : h('p', { class: 'small' }, 'ホストがロビーに戻すのを待っています（ロビーで設定を変えて、もう一度遊べます）。'),
     );
   }
 
   return {
-    update(next) {
+    update(next, nextCtx) {
       view = next;
+      ctx = nextCtx ?? ctx;
       render();
     },
     destroy() {

@@ -450,3 +450,6 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
   .tk-m .tk-hand .tk-card { width: 104px; }
   .tk-m-menu { left: auto; width: min(420px, 60vw); }
 }
+.game-links { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 0; }
+.game-links a { color: inherit; font-weight: 700; }
+.tk-m-menu .game-links a { color: var(--accent); }

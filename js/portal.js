@@ -67,7 +67,8 @@ for (const game of GAMES) {
         h('span', { class: 'tag' }, game.time),
       ),
       h('p', {}, game.summary),
-      h('details', { class: 'rules' }, h('summary', {}, 'ルールを見る'), h('ol', {}, game.rules.map(r => h('li', {}, r)))),
+      h('details', { class: 'rules' }, h('summary', {}, 'ルールを見る'), h('ol', {}, game.rules.map(r => h('li', {}, r))), gameLinks(game)),
+      gameLinks(game),
       h('div', { class: 'actions' },
         h('button', { class: 'btn primary', type: 'button', onclick: () => createRoom(game.id) }, '部屋を作る'),
       ),
@@ -85,4 +86,10 @@ if (recent.length) {
       h('a', { class: 'btn small', href: roomUrl(r.code) }, `${game?.icon ?? '🎲'} ${r.code}${hostRecord(r.code) ? '（ホスト）' : ''}`),
     );
   }
+}
+
+// ゲームの説明に添えるリンク（カード一覧など）。別タブで開く
+function gameLinks(game) {
+  if (!game.links?.length) return null;
+  return h('p', { class: 'small game-links' }, game.links.map(l => h('a', { href: l.href, target: '_blank', rel: 'noopener' }, l.label)));
 }

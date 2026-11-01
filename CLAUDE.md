@@ -15,7 +15,7 @@ js/host.js                  Host（ホスト側の進行役。正しい状態を
 js/net.js                   通信。本番は Trystero、?local=1 なら同じブラウザのタブ間（BroadcastChannel）
 js/storage.js               localStorage（?local=1 では sessionStorage）。プレイヤーID・名前・ホストの部屋の保存
 js/util.js                  h()（DOM 生成）、shuffle、seededRng、GameError など
-games/registry.js           ゲーム一覧（名前・人数・ルール説明・logic/ui の読み込み）
+games/registry.js           ゲーム一覧（名前・人数・ルール説明・links（説明の下に出す別タブのリンク）・logic/ui の読み込み）
 games/<id>/logic.js         ルール。DOM を使わない純粋なロジック
 games/<id>/ui.js            画面
 vendor/trystero.js          Trystero を1ファイルにまとめたもの（npm run build:vendor）
@@ -58,7 +58,7 @@ export function view(state, playerId) { return {...}; }                         
 ## 画面の約束事（ui.js）
 
 ```js
-export function createUI(root, api) {   // api.send(action), api.toast(text), api.rules（registry のルール配列）
+export function createUI(root, api) {   // api.send(action), api.toast(text), api.rules（registry のルール配列）, api.links, api.backToLobby()（ホストのみ有効）
   return { update(view, ctx) {}, destroy() {} };  // ctx = { you, isHost, players }
 }
 ```

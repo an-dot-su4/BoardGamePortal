@@ -275,6 +275,9 @@ function renderLobby() {
         ),
         h('p', { style: { margin: 0 } }, game.summary),
         h('ol', { style: { margin: 0, paddingLeft: '1.3em' } }, game.rules.map(r => h('li', {}, r))),
+        game.links?.length
+          ? h('p', { class: 'small game-links', style: { margin: 0 } }, game.links.map(l => h('a', { href: l.href, target: '_blank', rel: 'noopener' }, l.label)))
+          : null,
       ),
       optionsBox,
     );
@@ -328,6 +331,11 @@ function renderGame() {
       send: action => client.act(action),
       toast,
       rules: game.rules,
+      links: game.links ?? [],
+      // ホストがゲームを終えてロビーに戻る（部屋の状態欄のボタンと同じ）
+      backToLobby: () => {
+        if (confirm('ゲームを終了してロビーに戻りますか？')) client.backToLobby();
+      },
     });
     gameUI = { gameId: game.id, ui };
     // 読み込み中に届いた最新の状態で描く
