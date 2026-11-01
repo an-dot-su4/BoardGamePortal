@@ -156,7 +156,7 @@ export const HEIAN = {
         e.g.ps[e.p].hand.splice(e.g.ps[e.p].hand.indexOf(ids[0]), 1);
         e.g.ps[e.p].play.push(ids[0]);
         e.log(`${e.name()}: ${cardName(ids[0])}を2回使う`);
-        e.play(ids[0], 2);
+        e.play(ids[0], 2, { token: e.newToken(), card: 'gozen' });
       },
     },
   },

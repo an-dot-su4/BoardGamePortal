@@ -156,6 +156,9 @@ export function createUI(root, api) {
           turnP && p.play.length
             ? h('div', { class: 'tk-play' }, p.play.map(id => h('span', { class: `tk-pill tk-pill-${pillType(id)}` }, CARDS[id].name)))
             : null,
+          p.dur.length
+            ? h('div', { class: 'tk-play', title: '次の手番にも効く札（持続中）' }, h('span', { class: 'small' }, '⏳'), p.dur.map(id => h('span', { class: 'tk-pill tk-pill-duration' }, CARDS[id].name)))
+            : null,
         );
       }),
     );
@@ -209,6 +212,12 @@ export function createUI(root, api) {
     if (pr.kind === 'option') {
       return h('div', { class: 'result-box tk-prompt' }, head,
         h('div', { class: 'game-actions' }, pr.options.map(o => h('button', { class: 'btn primary', type: 'button', onclick: () => send({ type: 'choose', answer: o.value }) }, o.label))),
+      );
+    }
+    if (pr.kind === 'list') {
+      return h('div', { class: 'result-box tk-prompt' }, head,
+        h('div', { class: 'small' }, 'タップして選んでください'),
+        h('div', { class: 'tk-row' }, pr.cands.map(id => cardEl(CARDS[id], { size: 'mini', onclick: () => send({ type: 'choose', answer: id }) }))),
       );
     }
     if (pr.kind === 'supply') {
@@ -283,5 +292,5 @@ export function createUI(root, api) {
 
 function pillType(id) {
   const t = CARDS[id].types;
-  return t.includes('attack') ? 'attack' : t.includes('treasure') ? 'treasure' : t.includes('victory') ? 'victory' : 'action';
+  return t.includes('attack') ? 'attack' : t.includes('duration') ? 'duration' : t.includes('treasure') ? 'treasure' : t.includes('victory') ? 'victory' : 'action';
 }

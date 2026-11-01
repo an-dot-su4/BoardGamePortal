@@ -4,8 +4,9 @@
 import { H, W, washi } from './art/common.js';
 import { BASIC_ART } from './art/basic.js';
 import { HEIAN_ART } from './art/heian.js';
+import { KAMAKURA_ART } from './art/kamakura.js';
 
-const ART = { ...BASIC_ART, ...HEIAN_ART };
+const ART = { ...BASIC_ART, ...HEIAN_ART, ...KAMAKURA_ART };
 
 // 仮の絵: 札の名前の一文字を、家紋のような丸に描く
 function placeholder(card) {

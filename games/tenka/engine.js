@@ -5,6 +5,8 @@
 // state.prompt を立てて止まり、プレイヤーの答え（act の 'choose'）で続きを実行する。
 //
 // カードの置き場所（各プレイヤー）: deck（山札・末尾が一番上）/ hand / discard（末尾が一番上）/ play（場）/ aside（脇に置いた札）
+//   dur（持続札: 次の手番まで場に残る）/ look（見ている途中の札）
+// 持続札の効果: 使った手番に durNext に記録 → 片付けで durEffects へ → 次の手番の最初に card.next(e) を実行
 // カードはIDの文字列で表す（同じ種類のカードは区別しない）。
 import { GameError, shuffle } from '../../js/util.js';
 import { CARDS } from './cards/index.js';
@@ -75,7 +77,8 @@ export function discardFromHand(g, pid, ids) {
 
 export function allCards(g, pid) {
   const ps = g.ps[pid];
-  return [...ps.deck, ...ps.hand, ...ps.discard, ...ps.play, ...ps.aside];
+  const held = [...(ps.durNext ?? []), ...(ps.durEffects ?? [])].flatMap(en => en.held);
+  return [...ps.deck, ...ps.hand, ...ps.discard, ...ps.play, ...ps.aside, ...(ps.dur ?? []), ...(ps.look ?? []), ...held];
 }
 
 export function costOf(g, id) {
@@ -116,9 +119,13 @@ function effectContext(g, rng, op) {
     // 他の全員に攻撃する（手番順）。対象ごとに steps[step] が e.target 付きで呼ばれる
     attack: (step, data = e.data) =>
       pushOps(g, ...others(g, e.p).map(t => ({ op: 'attack', p: e.p, card: e.card, step, data, target: t }))),
-    play: (id, times = 1) => {
-      for (let i = 0; i < times; i++) pushOps(g, { op: 'resolve', p: e.p, card: id });
+    // 札を times 回使う。via は御前などで使ったときの印（持続札なら御前も一緒に場に残る）
+    play: (id, times = 1, via = null) => {
+      for (let i = 0; i < times; i++) pushOps(g, { op: 'resolve', p: e.p, card: id, via: via?.token ?? null, viaCard: via?.card ?? null });
     },
+    // 持続札の記録（使った手番の効果から、次の手番へ情報や札を渡す）
+    durEntry: () => g.ps[e.p].durNext[e.data.dur],
+    newToken: () => `${g.turnNo}-${(g.seq = (g.seq ?? 0) + 1)}`,
   };
   return e;
 }
@@ -144,7 +151,17 @@ export function run(g, rng) {
 function exec(g, rng, op) {
   if (op.op === 'resolve') {
     const c = card(op.card);
-    c.play?.(effectContext(g, rng, op));
+    const e = effectContext(g, rng, op);
+    if (c.next) {
+      const ps = g.ps[op.p];
+      ps.durNext.push({ id: op.card, data: {}, held: [], via: op.via ?? null, viaCard: op.viaCard ?? null });
+      e.data = { dur: ps.durNext.length - 1 };
+    }
+    c.play?.(e);
+  } else if (op.op === 'next') {
+    const e = effectContext(g, rng, op);
+    e.entry = op.entry;
+    card(op.card).next(e);
   } else if (op.op === 'step') {
     card(op.card).steps[op.step](effectContext(g, rng, op), op.answer);
   } else if (op.op === 'attack') {
@@ -159,9 +176,10 @@ function exec(g, rng, op) {
   }
 }
 
-// 攻撃を防ぐカード（手札のリアクション）。持っていれば自動で公開する
+// 攻撃を防ぐカード（手札のリアクション、または場に残っている守りの持続札）。持っていれば自動で公開する
 function blockedBy(g, pid) {
-  return g.ps[pid].hand.find(id => card(id).reaction === 'block') ?? null;
+  const ps = g.ps[pid];
+  return ps.hand.find(id => card(id).reaction === 'block') ?? ps.dur.find(id => card(id).protect) ?? null;
 }
 
 // ---- 選択 ----
@@ -173,7 +191,7 @@ function normalizePrompt(g) {
   pr.max = Math.min(pr.max ?? 1, pr.kind === 'option' ? 1 : cands.length);
   pr.min = Math.min(pr.min ?? 0, pr.max);
   if (pr.kind !== 'option' && cands.length === 0) {
-    resume(g, pr.kind === 'supply' ? null : []);
+    resume(g, pr.kind === 'hand' ? [] : null);
   }
 }
 
@@ -181,6 +199,7 @@ export function candidates(g, pr) {
   if (pr.kind === 'hand') {
     return g.ps[pr.p].hand.filter(id => (!pr.types || pr.types.some(t => isType(id, t))) && (!pr.ids || pr.ids.includes(id)));
   }
+  if (pr.kind === 'list') return pr.cards.slice(); // 見せた札の中から1枚選ぶ
   if (pr.kind === 'supply') {
     return Object.keys(g.supply).filter(
       id =>

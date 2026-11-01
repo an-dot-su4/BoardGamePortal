@@ -4,6 +4,7 @@ import * as T from '../games/tenka/logic.js';
 import { makeBot } from '../games/tenka/bot.js';
 import { seededRng } from '../js/util.js';
 import { makePlayers } from './sim-helpers.js';
+import { totalCards } from './tenka-helpers.js';
 
 // 手札を差し替えて、その人の行動フェーズから始める
 function fresh(n = 2, hand = [], options = { preset: 'heian-first' }) {
@@ -17,16 +18,6 @@ function fresh(n = 2, hand = [], options = { preset: 'heian-first' }) {
 }
 const play = (g, p, card) => T.act(g, p, { type: 'play', card }, seededRng(2));
 const choose = (g, p, answer) => T.act(g, p, { type: 'choose', answer }, seededRng(3));
-
-// 場にあるカードの総数（各人の札＋廃棄＋供給）
-function totalCards(g) {
-  let n = g.trash.length + Object.values(g.supply).reduce((a, b) => a + b, 0);
-  for (const p of g.players) {
-    const ps = g.ps[p];
-    n += ps.deck.length + ps.hand.length + ps.discard.length + ps.play.length + ps.aside.length;
-  }
-  return n;
-}
 
 test('里・写経所・市: +札 +行動 +購入 +文', () => {
   const { g, p } = fresh(2, ['sato', 'shakyo', 'ichi']);
@@ -183,7 +174,7 @@ test('購入と手番の終わり', () => {
 
 test('庭園: 10枚ごとに1点', () => {
   const { g, p } = fresh(2, []);
-  g.ps[p] = { deck: Array(23).fill('zeni'), hand: [], discard: ['teien', 'teien'], play: [], aside: [], turns: 0 };
+  Object.assign(g.ps[p], { deck: Array(23).fill('zeni'), hand: [], discard: ['teien', 'teien'], play: [] });
   assert.equal(T.score(g, p), 4);
 });
 

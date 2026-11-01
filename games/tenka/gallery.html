@@ -34,7 +34,7 @@
       section('基本カード', missingNote(basics), basics),
       ...SETS.filter(s => s.ready).map(s => {
         const cards = all.filter(c => c.set === s.id).sort((a, b) => a.cost - b.cost);
-        return section(`${s.name}（${s.feature}）`, missingNote(cards), cards);
+        return section(`${s.name}　${cards.length}種`, [s.feature, missingNote(cards)].filter(Boolean).join(' '), cards);
       }),
     );
   </script>

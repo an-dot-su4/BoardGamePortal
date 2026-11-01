@@ -26,6 +26,19 @@ const AI = {
   tera: { value: 3 },
   kekkai: { value: 3 },
   teien: { value: 0 },
+  // 鎌倉
+  monomi: { chain: true, value: 3 },
+  shugo: { chain: true, value: 2 },
+  ryoshi: { chain: true, value: 6 },
+  hikitsuke: { chain: true, value: 4 },
+  mihari: { chain: true, value: 3 },
+  gokenin: { chain: true, value: 5 },
+  monzen: { chain: true, value: 6 },
+  akutou: { value: 5 },
+  sousen: { value: 6 },
+  toimaru: { value: 8 },
+  genkou: { value: 8 },
+  shikken: { value: 5 },
 };
 
 const cost = id => CARDS[id].cost;
@@ -66,6 +79,8 @@ function useful(g, pid, id) {
   if (id === 'kanayama') return hand.includes('zeni') || hand.includes('gin');
   if (id === 'gozen') return hand.filter(c => isType(c, 'action') && c !== 'gozen').length > 0;
   if (id === 'zouei') return hand.some(c => c !== 'zouei');
+  // 執権は手札を全部捨てるので、お金の少ない手札のときだけ
+  if (id === 'shikken') return hand.reduce((a, c) => a + (CARDS[c].coin ?? 0), 0) <= 3;
   return true;
 }
 
@@ -154,6 +169,11 @@ function answerPrompt(g, pid, strategy) {
   const cands = candidates(g, pr);
 
   if (pr.kind === 'supply') return bestGain(g, pid, pr, strategy);
+  if (pr.kind === 'list') {
+    // 見張り: 廃棄は捨てたい札、捨て札は持っておきたくない札から
+    if (step === 'trash') return cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b))[0];
+    return cands.sort((a, b) => keepScore(a) - keepScore(b))[0];
+  }
   if (pr.kind === 'option') {
     if (card === 'shoko') return g.turn.actions > 0 ? 'keep' : 'aside';
     return pr.options[0].value;
@@ -170,6 +190,11 @@ function answerPrompt(g, pid, strategy) {
   else if (card === 'tera') picked = pickBy(id => trashScore(g, pid, id), id => trashScore(g, pid, id) > 0);
   else if (card === 'kanekashi') picked = cands.slice(0, 1);
   else if (card === 'gozen') picked = [chooseActionFrom(cands.filter(id => id !== 'gozen')) ?? cands[0]].slice(0, 1);
+  else if (card === 'shugo') {
+    // 今使えない行動札があれば預ける。なければ一番要らない札
+    const idle = g.turn.actions === 0 ? cands.filter(id => isType(id, 'action')) : [];
+    picked = (idle.length ? idle : cands.sort((a, b) => keepScore(a) - keepScore(b))).slice(0, 1);
+  } else if (card === 'genkou') picked = cands.sort((a, b) => keepScore(b) - keepScore(a)).slice(0, pr.min); // 良い札を山札に戻す
   else if (card === 'kanayama') picked = cands.includes('gin') ? ['gin'] : cands.includes('zeni') ? ['zeni'] : [];
   else if (card === 'zouei' && step === 'trash') {
     const order = id => (id === 'tatari' ? 100 : id === 'kin' && g.supply.kuni > 0 ? 90 : id === 'ta' ? 80 : id === 'zeni' ? 50 : 10 - cost(id));

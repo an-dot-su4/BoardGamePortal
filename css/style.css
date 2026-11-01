@@ -370,6 +370,7 @@ button.tk-card:hover { transform: translateY(-2px); }
 .tk-pill-attack { background: #c0392b; }
 .tk-pill-treasure { background: #b8860b; }
 .tk-pill-victory { background: #4f8a3a; }
+.tk-pill-duration { background: #d9822b; }
 .tk-prompt { border: 2px solid #ffd36b; }
 .tk-zoom { position: fixed; inset: 0; background: rgb(0 0 0 / 0.6); display: grid; place-items: center; z-index: 30; padding: 16px; }
 .tk-zoom-inner { display: grid; gap: 10px; justify-items: center; }

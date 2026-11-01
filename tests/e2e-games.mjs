@@ -81,8 +81,10 @@ const scenarios = {
     const { pages } = await openGame('天下札', ['あき', 'はる'], VIEWPORT, async (host, [guest]) => {
       await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
       await host.waitForSelector('#players li:has-text("CPU")');
-      await host.locator('select:has(option[value="heian-first"])').selectOption('heian-first');
-      await guest.waitForSelector('select:has(option[value="heian-first"]:checked)');
+      // 鎌倉も使い、平安＋鎌倉のおすすめセットにする
+      await host.locator('label.tk-set-check', { hasText: '鎌倉' }).locator('input').check();
+      await host.locator('select:has(option[value="kamakura-houkou"])').selectOption('kamakura-houkou');
+      await guest.waitForSelector('select:has(option[value="kamakura-houkou"]:checked)');
       await host.locator('details.tk-ban summary').click();
       // おすすめセットに入っている検非違使を BAN する（代わりが入るはず）
       await host.locator('.tk-ban-grid [data-card="kebiishi"]').click();

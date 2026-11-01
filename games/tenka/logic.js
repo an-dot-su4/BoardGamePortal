@@ -21,8 +21,11 @@ export function normalizeOptions(o) {
   const sets = (Array.isArray(o?.sets) ? o.sets : []).filter(s => ready.includes(s));
   const kingdomIds = KINGDOM.map(c => c.id);
   const bans = [...new Set((Array.isArray(o?.bans) ? o.bans : []).filter(id => kingdomIds.includes(id)))];
-  const preset = PRESETS.some(p => p.id === o?.preset) ? o.preset : 'random';
-  return { sets: sets.length ? sets : ['heian'], preset, bans };
+  const finalSets = sets.length ? sets : ['heian'];
+  // おすすめセットは、選んだ時代だけで作れるものに限る
+  const p = PRESETS.find(x => x.id === o?.preset);
+  const preset = p && p.cards.every(id => finalSets.includes(CARDS[id].set)) ? p.id : 'random';
+  return { sets: finalSets, preset, bans };
 }
 
 function available(options) {
@@ -43,7 +46,7 @@ export function pickKingdom(o, rng = Math.random) {
   const options = normalizeOptions(o);
   const pool = available(options);
   const preset = PRESETS.find(p => p.id === options.preset);
-  const chosen = preset ? preset.cards.filter(id => !options.bans.includes(id)) : [];
+  const chosen = preset ? preset.cards.filter(id => pool.includes(id)) : [];
   for (const id of shuffle(pool, rng)) {
     if (chosen.length >= KINGDOM_SIZE) break;
     if (!chosen.includes(id)) chosen.push(id);
@@ -89,7 +92,7 @@ export function setup(players, rng = Math.random, options = {}) {
     log: ['⛩️ 天下札、開始！ 王国: ' + kingdom.map(id => card(id).name).join('・')],
   };
   for (const pid of ids) {
-    g.ps[pid] = { deck: shuffle([...Array(7).fill('zeni'), ...Array(3).fill('ta')], rng), hand: [], discard: [], play: [], aside: [], turns: 0 };
+    g.ps[pid] = { deck: shuffle([...Array(7).fill('zeni'), ...Array(3).fill('ta')], rng), hand: [], discard: [], play: [], aside: [], dur: [], durNext: [], durEffects: [], look: [], turns: 0 };
     draw(g, rng, pid, HAND_SIZE);
   }
   startTurn(g, ids[Math.floor(rng() * n)], rng);
@@ -99,8 +102,15 @@ export function setup(players, rng = Math.random, options = {}) {
 function startTurn(g, pid, rng) {
   g.turnNo += 1;
   g.turn = { p: pid, phase: 'action', actions: 1, buys: 1, coins: 0, bought: [] };
-  g.ps[pid].turns += 1;
+  const ps = g.ps[pid];
+  ps.turns += 1;
   log(g, `── ${nameOf(g, pid)} の手番 ──`);
+  // 前の手番から残っている持続札: 場に戻して、次の手番の効果を使う
+  ps.play.push(...ps.dur);
+  ps.dur = [];
+  const effects = ps.durEffects;
+  ps.durEffects = [];
+  pushOps(g, ...effects.map(entry => ({ op: 'next', p: pid, card: entry.id, entry })));
   run(g, rng);
 }
 
@@ -108,6 +118,22 @@ function startTurn(g, pid, rng) {
 function cleanup(g, rng) {
   const pid = g.turn.p;
   const ps = g.ps[pid];
+  // この手番に使った持続札は捨てずに残す（御前で使った持続札は、御前も一緒に残る）
+  const tokens = new Set();
+  for (const entry of ps.durNext) {
+    const keep = [entry.id];
+    if (entry.via) {
+      if (tokens.has(entry.via)) continue;
+      tokens.add(entry.via);
+      keep.push(entry.viaCard);
+    }
+    for (const id of keep) {
+      const i = ps.play.indexOf(id);
+      if (i >= 0) ps.dur.push(...ps.play.splice(i, 1));
+    }
+  }
+  ps.durEffects = ps.durNext;
+  ps.durNext = [];
   ps.discard.push(...ps.play, ...ps.hand);
   ps.play = [];
   ps.hand = [];
@@ -260,6 +286,7 @@ export function view(g, pid) {
         discardTop: ps.discard[ps.discard.length - 1] ?? null,
         play: ps.play,
         aside: ps.aside,
+        dur: ps.dur,
         total: allCards(g, p).length,
         vp: g.phase === 'over' ? score(g, p) : null,
       };
@@ -282,4 +309,4 @@ function countCards(ids) {
 }
 
 // 画面・テスト用
-export { CARDS, KINGDOM, PRESETS, SETS, BASIC_TREASURES, BASIC_VICTORY };
+export { CARDS, KINGDOM, PRESETS, SETS, BASIC_TREASURES, BASIC_VICTORY, allCards };
