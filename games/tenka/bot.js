@@ -39,6 +39,19 @@ const AI = {
   toimaru: { value: 8 },
   genkou: { value: 8 },
   shikken: { value: 5 },
+  // 室町（財宝の札は行動を使わないので chain 扱い）
+  za: { chain: true, value: 6 },
+  chanoyu: { value: 5 },
+  jisha: { value: 4 },
+  kangou: { chain: true, value: 5 },
+  shugodaimyo: { value: 7 },
+  machishu: { chain: true, value: 6 },
+  kuramoto: { value: 6 },
+  nougaku: { chain: true, value: 8 },
+  sakaya: { chain: true, value: 4 },
+  kinkaku: { value: 8 },
+  dosou: { chain: true, value: 6 },
+  shichifuku: { value: 5 },
 };
 
 const cost = id => CARDS[id].cost;
@@ -55,7 +68,7 @@ export function makeBot(strategy = 'normal') {
       const pick = chooseAction(g, pid);
       if (pick) return { type: 'play', card: pick };
     }
-    if (hand.some(id => isType(id, 'treasure') && !CARDS[id].play)) return { type: 'treasures' };
+    if (hand.some(id => isType(id, 'treasure') && !isType(id, 'action'))) return { type: 'treasures' };
     if (t.buys > 0) {
       const b = chooseBuy(g, pid, strategy, rng);
       if (b) return { type: 'buy', card: b };
@@ -77,7 +90,7 @@ function useful(g, pid, id) {
   if (id === 'tera') return hand.some(c => trashScore(g, pid, c) > 0);
   if (id === 'kanekashi') return hand.includes('zeni');
   if (id === 'kanayama') return hand.includes('zeni') || hand.includes('gin');
-  if (id === 'gozen') return hand.filter(c => isType(c, 'action') && c !== 'gozen').length > 0;
+  if (id === 'gozen' || id === 'shichifuku') return hand.filter(c => isType(c, 'action') && c !== 'gozen' && c !== 'shichifuku').length > 0;
   if (id === 'zouei') return hand.some(c => c !== 'zouei');
   // 執権は手札を全部捨てるので、お金の少ない手札のときだけ
   if (id === 'shikken') return hand.reduce((a, c) => a + (CARDS[c].coin ?? 0), 0) <= 3;
@@ -118,7 +131,12 @@ function totalCards(g, pid) {
 export function chooseBuy(g, pid, strategy = 'normal') {
   const coins = g.turn.coins;
   const left = g.supply.kuni;
-  const can = id => g.supply[id] > 0 && cost(id) <= coins;
+  const can = id => g.supply[id] > 0 && cost(id) <= coins && CARDS[id].canBuy?.(g, pid) !== false;
+  // 室町の大判・御所がある卓: 11文で御所、9文で大判
+  if ('gosho' in g.supply) {
+    if (can('gosho')) return 'gosho';
+    if (coins >= 9 && can('ohban') && g.supply.gosho > 3) return 'ohban';
+  }
   if (coins >= 8 && can('kuni')) return 'kuni';
   if (coins >= 5 && left <= 4 && can('shouen')) return 'shouen';
   if (coins >= 6 && can('kin')) return 'kin';
@@ -149,7 +167,9 @@ function bestGain(g, pid, pr, strategy) {
   const cands = candidates(g, pr);
   if (!cands.length) return null;
   const pref = id => {
+    if (id === 'gosho') return 110;
     if (id === 'kuni') return 100;
+    if (id === 'ohban') return 60;
     if (id === 'kin') return 50;
     if (favorites(g, pid, strategy).includes(id) && wants(g, pid, id, strategy)) return 40 + cost(id);
     if (id === 'gin') return 30;
@@ -169,6 +189,11 @@ function answerPrompt(g, pid, strategy) {
   const cands = candidates(g, pr);
 
   if (pr.kind === 'supply') return bestGain(g, pid, pr, strategy);
+  if (card === 'jisha' && step === 'otherTrash') return cands.filter(id => trashScore(g, pid, id) > 0).slice(0, 1);
+  if (card === 'kuramoto' && step === 'swap') {
+    const junk = cands.filter(id => keepScore(id) <= 0).sort((a, b) => keepScore(a) - keepScore(b));
+    return junk.length >= 2 ? junk.slice(0, 2) : [];
+  }
   if (pr.kind === 'list') {
     // 見張り: 廃棄は捨てたい札、捨て札は持っておきたくない札から
     if (step === 'trash') return cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b))[0];
@@ -189,7 +214,9 @@ function answerPrompt(g, pid, strategy) {
   if (card === 'kura') picked = pickBy(id => -keepScore(id), id => keepScore(id) < 0);
   else if (card === 'tera') picked = pickBy(id => trashScore(g, pid, id), id => trashScore(g, pid, id) > 0);
   else if (card === 'kanekashi') picked = cands.slice(0, 1);
-  else if (card === 'gozen') picked = [chooseActionFrom(cands.filter(id => id !== 'gozen')) ?? cands[0]].slice(0, 1);
+  else if (card === 'gozen' || card === 'shichifuku') picked = [chooseActionFrom(cands.filter(id => id !== 'gozen' && id !== 'shichifuku')) ?? cands[0]].slice(0, 1);
+  else if (card === 'kuramoto') picked = cands.filter(id => keepScore(id) < 0);
+  else if (card === 'jisha') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
   else if (card === 'shugo') {
     // 今使えない行動札があれば預ける。なければ一番要らない札
     const idle = g.turn.actions === 0 ? cands.filter(id => isType(id, 'action')) : [];

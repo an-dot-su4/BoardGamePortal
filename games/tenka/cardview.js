@@ -12,7 +12,7 @@ export function frameType(card) {
 }
 
 // 「+1札」「+2文」などを色つきの記号にする
-const TOKEN = /(\+\d+)(札|行動|購入|文)|^([−-]?\d+)(点)$/g;
+const TOKEN = /(\+\d+)(札|行動|購入|文|名声)|^([−-]?\d+)(点)$/g;
 function richText(text) {
   return text.split('\n').map(line => {
     const parts = [];
@@ -20,7 +20,7 @@ function richText(text) {
     for (const m of line.matchAll(TOKEN)) {
       if (m.index > last) parts.push(line.slice(last, m.index));
       const [num, unit] = m[1] ? [m[1], m[2]] : [m[3], m[4]];
-      parts.push(h('span', { class: `tk-chip tk-chip-${{ 札: 'card', 行動: 'action', 購入: 'buy', 文: 'coin', 点: num.startsWith('−') ? 'curse' : 'vp' }[unit]}` }, num, h('small', {}, unit)));
+      parts.push(h('span', { class: `tk-chip tk-chip-${{ 札: 'card', 行動: 'action', 購入: 'buy', 文: 'coin', 名声: 'fame', 点: num.startsWith('−') ? 'curse' : 'vp' }[unit]}` }, num, h('small', {}, unit)));
       last = m.index + m[0].length;
     }
     if (last < line.length) parts.push(line.slice(last));

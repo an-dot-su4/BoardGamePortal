@@ -152,7 +152,7 @@ export function createUI(root, api) {
         return h('div', { class: ['seat', turnP && 'turn', p.id === view.me && 'me'].filter(Boolean).join(' ') },
           h('div', { class: 'name' }, p.bot ? '🤖 ' : '', p.name),
           h('div', { class: 'small' }, `手札${p.hand}・山札${p.deck}・捨て札${p.discard}`),
-          h('div', { class: 'small muted' }, `全${p.total}枚`, p.vp !== null ? `・${p.vp}点` : ''),
+          h('div', { class: 'small muted' }, `全${p.total}枚`, p.fame ? `・名声${p.fame}` : '', p.vp !== null ? `・${p.vp}点` : ''),
           turnP && p.play.length
             ? h('div', { class: 'tk-play' }, p.play.map(id => h('span', { class: `tk-pill tk-pill-${pillType(id)}` }, CARDS[id].name)))
             : null,

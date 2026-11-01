@@ -125,6 +125,8 @@ function effectContext(g, rng, op) {
     },
     // 持続札の記録（使った手番の効果から、次の手番へ情報や札を渡す）
     durEntry: () => g.ps[e.p].durNext[e.data.dur],
+    // 名声（勝利点トークン）
+    fame: (n, who = e.p) => (g.ps[who].fame = (g.ps[who].fame ?? 0) + n),
     newToken: () => `${g.turnNo}-${(g.seq = (g.seq ?? 0) + 1)}`,
   };
   return e;

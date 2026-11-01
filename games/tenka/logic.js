@@ -73,6 +73,12 @@ export function setup(players, rng = Math.random, options = {}) {
   };
   // 祟りは、祟りを配る札があるときだけ置く
   if (kingdom.some(id => card(id).giver?.includes('tatari'))) supply.tatari = 10 * (n - 1);
+  // 室町: 王国に室町の札が多いほど、大判と御所が加わりやすい
+  const muro = kingdom.filter(id => card(id).set === 'muromachi').length;
+  if (muro > 0 && rng() < muro / KINGDOM_SIZE) {
+    supply.ohban = 12;
+    supply.gosho = victoryPile;
+  }
   for (const id of kingdom) supply[id] = isType(id, 'victory') ? victoryPile : 10;
 
   const g = {
@@ -92,7 +98,7 @@ export function setup(players, rng = Math.random, options = {}) {
     log: ['⛩️ 天下札、開始！ 王国: ' + kingdom.map(id => card(id).name).join('・')],
   };
   for (const pid of ids) {
-    g.ps[pid] = { deck: shuffle([...Array(7).fill('zeni'), ...Array(3).fill('ta')], rng), hand: [], discard: [], play: [], aside: [], dur: [], durNext: [], durEffects: [], look: [], turns: 0 };
+    g.ps[pid] = { deck: shuffle([...Array(7).fill('zeni'), ...Array(3).fill('ta')], rng), hand: [], discard: [], play: [], aside: [], dur: [], durNext: [], durEffects: [], look: [], fame: 0, turns: 0 };
     draw(g, rng, pid, HAND_SIZE);
   }
   startTurn(g, ids[Math.floor(rng() * n)], rng);
@@ -148,7 +154,7 @@ export function emptyPiles(g) {
 }
 
 function isGameOver(g) {
-  return g.supply.kuni === 0 || emptyPiles(g).length >= 3;
+  return g.supply.kuni === 0 || g.supply.gosho === 0 || emptyPiles(g).length >= 3;
 }
 
 export function score(g, pid) {
@@ -160,7 +166,7 @@ export function score(g, pid) {
     if (typeof v === 'function') vp += v({ total, cards });
     else if (typeof v === 'number') vp += v;
   }
-  return vp;
+  return vp + (g.ps[pid].fame ?? 0);
 }
 
 function finish(g) {
@@ -218,11 +224,20 @@ export function act(g, pid, action, rng = Math.random) {
 
   if (type === 'treasures') {
     enterBuy(g);
-    // 選択の要らない財宝をまとめて出す
-    for (const id of hand.filter(c => isType(c, 'treasure') && !card(c).play)) {
+    // 財宝をまとめて出す。効果のある財宝（土倉など）は、ほかの財宝を出してから順に
+    const treasures = hand.filter(c => isType(c, 'treasure') && !isType(c, 'action'));
+    const special = treasures.filter(c => card(c).play);
+    for (const id of treasures.filter(c => !card(c).play)) {
       take(hand, [id]);
       g.ps[pid].play.push(id);
       t.coins += card(id).coin ?? 0;
+    }
+    for (const id of special) {
+      take(hand, [id]);
+      g.ps[pid].play.push(id);
+      t.coins += card(id).coin ?? 0;
+      pushOps(g, { op: 'resolve', p: pid, card: id });
+      run(g, rng);
     }
     return;
   }
@@ -234,11 +249,20 @@ export function act(g, pid, action, rng = Math.random) {
     enterBuy(g);
     if (t.buys < 1) throw new GameError('購入がもう残っていません');
     if (t.coins < card(id).cost) throw new GameError(`お金が足りません（${card(id).cost}文必要）`);
+    if (card(id).canBuy?.(g, pid) === false) throw new GameError(`${card(id).name}は今は買えません（場に銅銭があるなど）`);
     t.coins -= card(id).cost;
     t.buys -= 1;
     gain(g, pid, id);
     t.bought.push(id);
     log(g, `${nameOf(g, pid)}: ${card(id).name}を購入`);
+    // 場にある札の「買ったとき」の効果（金閣・酒屋など）
+    const x = {
+      name: nameOf(g, pid),
+      gain: cid => gain(g, pid, cid),
+      fame: n => (g.ps[pid].fame += n),
+      log: text => log(g, text),
+    };
+    for (const c of g.ps[pid].play.slice()) card(c).whileInPlay?.onBuy?.(x, id);
     return;
   }
 
@@ -287,6 +311,7 @@ export function view(g, pid) {
         play: ps.play,
         aside: ps.aside,
         dur: ps.dur,
+        fame: ps.fame ?? 0,
         total: allCards(g, p).length,
         vp: g.phase === 'over' ? score(g, p) : null,
       };
