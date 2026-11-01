@@ -8,8 +8,8 @@ import { EDO } from './edo.js';
 
 export const SETS = [
   { id: 'heian', name: '平安', era: '基本', ready: true, feature: '基本セット（本家の基本セット初版と同じ25種）。引く・行動を増やす・妨害・圧縮。単体で遊べる。' },
-  { id: 'kamakura', name: '鎌倉', ready: true, feature: '持続（御恩と奉公）: 次の手番にも効く札。' },
-  { id: 'muromachi', name: '室町', ready: true, feature: '財宝と文化: 大判・御所・名声（勝利点トークン）。' },
+  { id: 'kamakura', name: '鎌倉', ready: true, feature: '持続（御恩と奉公。本家の海辺・初版と同じ26種）: 次の手番にも効く札・マット。' },
+  { id: 'muromachi', name: '室町', ready: true, feature: '財宝と文化（本家の繁栄・初版と同じ25種）: 大判・御所・名声（勝利点トークン）・コストが下がる札・獲得したときの反応。' },
   { id: 'sengoku', name: '戦国', ready: true, feature: '下剋上: 廃棄・落武者・戦利品・激しい妨害。' },
   { id: 'edo', name: '江戸', ready: true, feature: '町人文化: 蓄え（小判）・多く払うと得をする札・札の名前を言う札。' },
 ];
@@ -33,6 +33,7 @@ export const PRESETS = [
   { id: 'kamakura-houkou', name: '奉公の道', note: '平安＋鎌倉。持続の入門', cards: ['ryoshi', 'gokenin', 'toimaru', 'sousen', 'monomi', 'kebiishi', 'sato', 'shakyo', 'ichi', 'kura'] },
   { id: 'muromachi-eiga', name: '室町の栄華', note: '室町だけで大判・御所を目指す', cards: ['za', 'chanoyu', 'jisha', 'kangou', 'machishu', 'kuramoto', 'nougaku', 'kinkaku', 'dosou', 'shichifuku'] },
   { id: 'muromachi-chanoyu', name: '茶の湯と名声', note: '平安＋室町。名声で点を稼ぐ', cards: ['chanoyu', 'jisha', 'kinkaku', 'za', 'sakaya', 'sato', 'tera', 'shakyo', 'ichi', 'koubou'] },
+  { id: 'muromachi-fushin', name: '普請と鍛冶', note: '室町だけ。安くして作り替える', cards: ['kashiage', 'bashaku', 'bansho', 'ishikiri', 'omamori', 'tsuchiikki', 'goshuin', 'fushin', 'katanakaji', 'gyoushou'] },
   { id: 'sengoku-gekokujo', name: '下剋上', note: '戦国だけ。廃棄と格上げ', cards: ['rakuichi', 'katanagari', 'yamashiro', 'randori', 'gekokujo', 'chigyou', 'kobutsu', 'nobushi', 'ikkou', 'takagari'] },
   { id: 'sengoku-ran', name: '戦乱の世', note: '平安＋戦国。攻めと結界', cards: ['randori', 'ikkou', 'yakiuchi', 'shinobi', 'kekkai', 'tera', 'sato', 'shakyo', 'ichi', 'zouei'] },
   { id: 'edo-chounin', name: '町人の世', note: '江戸だけ。蓄えをためて使う', cards: ['shukuba', 'touryou', 'ishiya', 'yose', 'kabuki', 'bantou', 'ryougae', 'echigoya', 'ukiyoe', 'watari'] },

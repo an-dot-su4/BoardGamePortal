@@ -3,7 +3,7 @@
 // 基本は「お金重視」: 8文で国、6文で金、3文で銀。そこに王国から気に入った札を数枚まぜる。
 // 選択を求められたときの答え方は、カードと場面ごとに決めておく（なければ無難な既定値）。
 import { CARDS } from './cards/index.js';
-import { candidates, isType } from './engine.js';
+import { candidates, costOf, isType } from './engine.js';
 
 // 王国カードの使い方の目安。+行動を生む札は「つなぎ」、それ以外は「終端」（1手番に1枚しか使えない）
 const AI = {
@@ -72,6 +72,19 @@ const AI = {
   kinkaku: { value: 8 },
   dosou: { chain: true, value: 6 },
   shichifuku: { value: 5 },
+  kashiage: { chain: true, value: 3 },
+  bashaku: { chain: true, value: 3 },
+  bansho: { value: 5 },
+  ishikiri: { chain: true, value: 2 },
+  omamori: { chain: true, value: 3 },
+  shichusen: { chain: true, value: 4 },
+  kanjou: { value: 2 },
+  chuusen: { value: 3 },
+  tsuchiikki: { value: 8 },
+  goshuin: { chain: true, value: 4 },
+  fushin: { value: 5 },
+  katanakaji: { value: 3 },
+  gyoushou: { chain: true, value: 5 },
   // 戦国
   ochimusha: { chain: false, value: 0 },
   yakedera: { value: 0 },
@@ -129,7 +142,7 @@ export function makeBot(strategy = 'normal') {
       }
       const b = chooseBuy(g, pid, strategy, rng);
       // 棟梁は、余った文を全部多く払って銀にする（最後の購入のとき）
-      if (b === 'touryou' && t.buys === 1) return { type: 'buy', card: b, overpay: t.coins - CARDS[b].cost };
+      if (b === 'touryou' && t.buys === 1) return { type: 'buy', card: b, overpay: t.coins - costOf(g, b) };
       if (b) return { type: 'buy', card: b };
     }
     return { type: 'end' };
@@ -154,6 +167,10 @@ function useful(g, pid, id) {
   if (id === 'gekokujo') return hand.some(c => isType(c, 'action') && c !== 'gekokujo');
   if (id === 'gozen' || id === 'shichifuku') return hand.filter(c => isType(c, 'action') && c !== 'gozen' && c !== 'shichifuku').length > 0;
   if (id === 'zouei') return hand.some(c => c !== 'zouei');
+  if (id === 'kanjou') return g.ps[pid].discard.includes('zeni');
+  if (id === 'chuusen') return hand.some(c => isType(c, 'treasure'));
+  if (id === 'katanakaji') return hand.some(c => trashScore(g, pid, c) > 0);
+  if (id === 'fushin') return hand.some(c => c !== 'fushin');
   // 執権は手札を全部捨てるので、お金の少ない手札のときだけ
   if (id === 'shikken') return hand.reduce((a, c) => a + (CARDS[c].coin ?? 0), 0) <= 3;
   return true;
@@ -194,7 +211,7 @@ function totalCards(g, pid) {
 export function chooseBuy(g, pid, strategy = 'normal') {
   const coins = g.turn.coins;
   const left = g.supply.kuni;
-  const can = id => g.supply[id] > 0 && cost(id) <= coins && CARDS[id].canBuy?.(g, pid) !== false;
+  const can = id => g.supply[id] > 0 && costOf(g, id) <= coins && CARDS[id].canBuy?.(g, pid) !== false && !g.turn.banned?.includes(id);
   // 室町の大判・御所がある卓: 11文で御所、9文で大判
   if ('gosho' in g.supply) {
     if (can('gosho')) return 'gosho';
@@ -262,6 +279,8 @@ function answerPrompt(g, pid, strategy) {
     const junk = cands.filter(id => keepScore(id) <= 0).sort((a, b) => keepScore(a) - keepScore(b));
     return junk.length >= 2 ? junk.slice(0, 2) : [];
   }
+  if (card === 'kuramoto' && step === 'agree') return g.ps[pid].hand.filter(id => keepScore(id) <= 0).length >= 2 ? 'yes' : 'no';
+  if (pr.kind === 'name' && card === 'shichusen') return ['gosho', 'kuni', 'kin'].find(id => cands.includes(id) && g.supply[id] > 0) ?? cands[0];
   if (pr.kind === 'name') {
     // 町医者は廃棄したい札、渡り職人は手札に要らない札の名前を言う
     const mine = new Set([...g.ps[pid].deck, ...g.ps[pid].discard]);
@@ -294,6 +313,13 @@ function answerPrompt(g, pid, strategy) {
     if (card === 'mizusaki') return g.ps[pid].look.filter(id => keepScore(id) <= 1).length > 2 ? 'discard' : 'back';
     if (card === 'wakou') return g.ps[pid].mats.pirate >= 2 ? 'cash' : 'raid';
     if (card === 'tokaisha') return 'yes';
+    if (card === 'kashiage') return trashScore(g, pid, pr.then.data.card) > 0 ? 'trash' : 'discard';
+    if (card === 'bansho') {
+      const id = pr.then.data.id;
+      return trashScore(g, pid, id) > 0 ? 'trash' : keepScore(id) >= 3 ? 'deck' : 'no';
+    }
+    if (card === 'goshuin') return keepScore(pr.then.data.id) >= 3 ? 'yes' : 'no';
+    if (card === 'chuusen') return 'no';
     if (card === 'kumonjo') return 'top';
     if (card === 'mittei') {
       const { who, card: seen } = pr.then.data;
@@ -331,7 +357,9 @@ function answerPrompt(g, pid, strategy) {
   else if (card === 'ishiya') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
   else if (card === 'yose') picked = cands.includes('zeni') ? ['zeni'] : [];
   else if (card === 'echigoya') picked = cands.filter(id => trashScore(g, pid, id) > 0 || id === 'kin').sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a)).slice(0, 1);
-  else if (card === 'katanagari' || card === 'kobutsu') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
+  else if (card === 'chuusen') picked = cands.sort((a, b) => (CARDS[b].coin ?? 0) - (CARDS[a].coin ?? 0)).slice(0, 1);
+  else if (card === 'katanakaji') picked = cands.filter(id => trashScore(g, pid, id) > 0);
+  else if (card === 'katanagari' || card === 'kobutsu' || card === 'bashaku') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
   else if (card === 'gekokujo') picked = cands.filter(id => id !== 'gekokujo').sort((a, b) => (AI[a]?.value ?? 1) - (AI[b]?.value ?? 1)).slice(0, 1);
   else if (card === 'kuramoto') picked = cands.filter(id => keepScore(id) < 0);
   else if (card === 'jisha') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
@@ -341,7 +369,7 @@ function answerPrompt(g, pid, strategy) {
     picked = (idle.length ? idle : cands.sort((a, b) => keepScore(a) - keepScore(b))).slice(0, 1);
   } else if (card === 'genkou') picked = cands.sort((a, b) => keepScore(b) - keepScore(a)).slice(0, pr.min); // 良い札を山札に戻す
   else if (card === 'kanayama') picked = cands.includes('gin') ? ['gin'] : cands.includes('zeni') ? ['zeni'] : [];
-  else if (card === 'zouei' && step === 'trash') {
+  else if ((card === 'zouei' || card === 'fushin') && step === 'trash') {
     const order = id => (id === 'tatari' ? 100 : id === 'kin' && g.supply.kuni > 0 ? 90 : id === 'ta' ? 80 : id === 'zeni' ? 50 : 10 - cost(id));
     picked = cands.sort((a, b) => order(b) - order(a)).slice(0, 1);
   } else {

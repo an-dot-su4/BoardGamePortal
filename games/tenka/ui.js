@@ -123,14 +123,16 @@ export function createUI(root, api) {
   function supplyBox(myTurn) {
     const pile = id => {
       // 落武者の山は、一番上の札を見せる
-      const c = id === 'ruins' && view.ruinsTop ? { ...CARDS[view.ruinsTop], id: 'ruins', name: `落武者の山（${CARDS[view.ruinsTop].name}）` } : CARDS[id];
+      const base = id === 'ruins' && view.ruinsTop ? { ...CARDS[view.ruinsTop], id: 'ruins', name: `落武者の山（${CARDS[view.ruinsTop].name}）` } : CARDS[id];
+      // 石切場・行商人でコストが変わっていれば、今のコストで見せる
+      const c = view.costs?.[id] !== undefined && view.costs[id] !== base.cost ? { ...base, cost: view.costs[id] } : base;
       const n = view.supply[id];
       const affordable = myTurn && view.turn.buys > 0 && n > 0 && view.turn.coins >= c.cost && !view.prompt && !CARDS[id].notSupply;
       const promptPick = view.prompt?.kind === 'supply' && view.prompt.cands.includes(id);
       return cardEl(c, {
         size: 'mini',
         count: n,
-        badge: view.embargo?.[id] ? `関${view.embargo[id]}` : null,
+        badge: [view.embargo?.[id] ? `関${view.embargo[id]}` : '', view.tradeRoute?.piles.includes(id) ? '印' : ''].filter(Boolean).join(' ') || null,
         dim: n === 0,
         selected: affordable || promptPick,
         onclick: () => {
@@ -149,6 +151,7 @@ export function createUI(root, api) {
         const extra = Object.keys(view.supply).filter(id => !view.kingdom.includes(id) && !BASIC_ROW.includes(id));
         return extra.length ? h('div', { class: 'tk-row' }, extra.map(pile)) : null;
       })(),
+      view.tradeRoute ? h('div', { class: 'small muted' }, `馬借のマット: 印${view.tradeRoute.mat}つ（「印」のある勝利点の山から初めて獲得されると増える）`) : null,
       h('div', { class: 'small muted' }, `廃棄置き場: ${view.trashCount}枚${view.trashTop ? `（一番上: ${CARDS[view.trashTop].name}）` : ''}`),
     );
   }
@@ -272,7 +275,7 @@ export function createUI(root, api) {
   }
 
   function zoomBox(myTurn) {
-    const c = CARDS[zoomed];
+    const c = view.costs?.[zoomed] !== undefined ? { ...CARDS[zoomed], cost: view.costs[zoomed] } : CARDS[zoomed];
     const n = view.supply[zoomed];
     const canBuy = myTurn && !view.prompt && view.turn.buys > 0 && n > 0 && view.turn.coins >= c.cost && !c.notSupply;
     const maxOver = canBuy && c.steps?.overpay ? view.turn.coins - c.cost : 0;

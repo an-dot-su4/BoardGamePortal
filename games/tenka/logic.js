@@ -5,7 +5,7 @@
 import { GameError, shuffle } from '../../js/util.js';
 import { CARDS, KINGDOM, PRESETS, SETS } from './cards/index.js';
 import {
-  allCards, answer, candidates, card, draw, gain, HAND_SIZE, isType, log, nameOf, pushOps, run, setOpHandler, take,
+  allCards, answer, candidates, card, costOf, draw, gain, HAND_SIZE, isType, log, nameOf, pushOps, run, setOpHandler, take,
 } from './engine.js';
 
 export { bot } from './bot.js';
@@ -90,6 +90,8 @@ export function setup(players, rng = Math.random, options = {}) {
     supply.gosho = victoryPile;
   }
   for (const id of kingdom) supply[id] = isType(id, 'victory') ? victoryPile : 10;
+  // 室町の馬借: 勝利点の各山に印を置く
+  const tradeRoute = kingdom.some(id => card(id).tradeRoute) ? { piles: Object.keys(supply).filter(id => isType(id, 'victory')), mat: 0 } : null;
 
   const g = {
     players: ids,
@@ -99,6 +101,7 @@ export function setup(players, rng = Math.random, options = {}) {
     supply,
     ruinsPile,
     embargo: {}, // 関所の札が置かれた山: { 山のID: 枚数 }
+    tradeRoute, // 馬借: { piles: 印が残っている山, mat: マットの印の数 }
     trash: [],
     ps: {},
     stack: [],
@@ -286,10 +289,11 @@ export function act(g, pid, action, rng = Math.random) {
     enterBuy(g);
     if (t.buys < 1) throw new GameError('購入がもう残っていません');
     if (!Number.isInteger(over) || over < 0 || (over > 0 && !card(id).steps?.overpay)) throw new GameError('多く払う額が正しくありません');
-    if (t.coins < card(id).cost + over) throw new GameError(`お金が足りません（${card(id).cost + over}文必要）`);
+    const price = costOf(g, id);
+    if (t.coins < price + over) throw new GameError(`お金が足りません（${price + over}文必要）`);
     if (card(id).canBuy?.(g, pid) === false) throw new GameError(`${card(id).name}は今は買えません（場に銅銭があるなど）`);
-    if (t.banned?.includes(id)) throw new GameError(`${card(id).name}はこの手番には買えません（密輸の取り締まり）`);
-    t.coins -= card(id).cost + over;
+    if (t.banned?.includes(id)) throw new GameError(`${card(id).name}はこの手番には買えません（私鋳銭）`);
+    t.coins -= price + over;
     t.buys -= 1;
     gain(g, pid, id);
     t.bought.push(id);
@@ -300,16 +304,18 @@ export function act(g, pid, action, rng = Math.random) {
       gain: cid => gain(g, pid, cid),
       fame: n => (g.ps[pid].fame += n),
       coffers: n => (g.ps[pid].coffers += n),
+      cost: cid => costOf(g, cid),
       log: text => log(g, text),
     };
     for (const c of g.ps[pid].play.slice()) card(c).whileInPlay?.onBuy?.(x, id);
     // 関所: その山に置かれた関所の数だけ祟りを獲得
     for (let i = 0; i < (g.embargo[id] ?? 0); i++) if (gain(g, pid, 'tatari')) log(g, `${nameOf(g, pid)}: 関所で祟りを受けた`);
-    // 多く払った効果（選択が要るものもあるので命令として実行）
-    if (over > 0) {
-      pushOps(g, { op: 'step', p: pid, card: id, step: 'overpay', data: { n: over } });
-      run(g, rng);
-    }
+    // 買った札自身の「買ったとき」の効果（鋳銭所）と、多く払った効果（選択が要るものもあるので命令として実行）
+    const ops = [];
+    if (card(id).steps?.onBuy) ops.push({ op: 'step', p: pid, card: id, step: 'onBuy', data: {} });
+    if (over > 0) ops.push({ op: 'step', p: pid, card: id, step: 'overpay', data: { n: over } });
+    pushOps(g, ...ops);
+    run(g, rng); // 獲得したときの反応（番所・御朱印）もここで処理する
     return;
   }
 
@@ -342,6 +348,8 @@ export function view(g, pid) {
     trashTop: g.trash[g.trash.length - 1] ?? null,
     ruinsTop: g.ruinsPile?.[g.ruinsPile.length - 1] ?? null,
     embargo: g.embargo ?? {},
+    tradeRoute: g.tradeRoute ?? null,
+    costs: Object.fromEntries(Object.keys(g.supply).map(id => [id, costOf(g, id)])),
     myNative: seated ? (g.ps[pid].mats?.native ?? []) : [],
     hand: seated ? g.ps[pid].hand.slice().sort(handOrder) : [],
     prompt: myPrompt,

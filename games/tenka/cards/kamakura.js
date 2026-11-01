@@ -337,7 +337,7 @@ export const KAMAKURA = {
     play(e) {
       const i = e.g.players.indexOf(e.p);
       const right = e.g.players[(i - 1 + e.g.players.length) % e.g.players.length];
-      const cands = [...new Set(e.g.ps[right].lastGained)].filter(id => e.g.supply[id] > 0 && !CARDS[id].notSupply && CARDS[id].cost <= 6);
+      const cands = [...new Set(e.g.ps[right].lastGained)].filter(id => e.g.supply[id] > 0 && !CARDS[id].notSupply && e.cost(id) <= 6);
       if (!cands.length) return e.log(`${e.name()}: 抜け荷にできる札がない`);
       e.ask({ kind: 'list', cards: cands, min: 1, max: 1, title: `抜け荷: ${e.name(right)} が獲得した札から選ぶ` }, 'gain');
     },
@@ -451,7 +451,7 @@ export const KAMAKURA = {
       sell(e, ids) {
         if (!ids.length) return;
         e.trash(ids);
-        e.coins(CARDS[ids[0]].cost);
+        e.coins(e.cost(ids[0]));
       },
     },
   },

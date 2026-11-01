@@ -89,7 +89,7 @@ export const HEIAN = {
       trash(e, ids) {
         if (!ids.length) return;
         e.trash(ids);
-        const max = cardCost(ids[0]) + 2;
+        const max = e.cost(ids[0]) + 2;
         e.ask({ kind: 'supply', min: 1, maxCost: max, title: `コスト${max}以下の札を獲得` }, 'gain', { from: ids[0] });
       },
       gain(e, id) {
@@ -223,7 +223,7 @@ export const HEIAN = {
       trash(e, ids) {
         if (!ids.length) return;
         e.trash(ids);
-        const max = cardCost(ids[0]) + 3;
+        const max = e.cost(ids[0]) + 3;
         e.ask({ kind: 'supply', min: 1, maxCost: max, types: ['treasure'], title: `コスト${max}以下の財宝を手札に獲得` }, 'gain', { from: ids[0] });
       },
       gain(e, id) {
@@ -453,5 +453,4 @@ function peek(e, who) {
 // engine.js を読み込むと循環するので、名前・コスト・種類はここで引く
 import { CARDS } from './index.js';
 const cardName = id => CARDS[id].name;
-const cardCost = id => CARDS[id].cost;
 const cardTypes = id => CARDS[id].types;

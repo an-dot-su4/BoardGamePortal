@@ -126,7 +126,7 @@ export const SENGOKU = {
           ps.play.splice(i, 1);
           e.trashCard(id);
         }
-        const cost = CARDS[id].cost + 1;
+        const cost = e.cost(id) + 1;
         e.ask({ kind: 'supply', min: 1, exactCost: cost, types: ['action'], title: `コストがちょうど${cost}の行動札を獲得` }, 'gain', { from: id });
       },
       gain(e, id) {
@@ -245,7 +245,7 @@ export const SENGOKU = {
     text: '+2文\n廃棄置き場にコスト3〜6の札があれば、1枚獲得する。無ければ、ほかの全員は山札を2枚めくり、コスト3〜6の札を1枚廃棄して残りを捨てる。',
     play(e) {
       e.coins(2);
-      const loot = [...new Set(e.g.trash.filter(id => CARDS[id].cost >= 3 && CARDS[id].cost <= 6))];
+      const loot = [...new Set(e.g.trash.filter(id => e.cost(id) >= 3 && e.cost(id) <= 6))];
       if (loot.length) {
         e.ask({ kind: 'list', cards: loot, min: 1, max: 1, title: '忍び: 廃棄置き場から獲得する札を選ぶ' }, 'steal');
         return;
@@ -255,8 +255,7 @@ export const SENGOKU = {
     steps: {
       steal(e, id) {
         if (!id) return;
-        e.g.trash.splice(e.g.trash.lastIndexOf(id), 1);
-        e.g.ps[e.p].discard.push(id);
+        e.gainFromTrash(id);
         e.log(`${e.name()}: 忍びが廃棄置き場から${cardName(id)}を盗み出した`);
       },
       hit(e) {
@@ -264,7 +263,7 @@ export const SENGOKU = {
         const seen = e.draw(2, e.target);
         for (const id of seen) ps.hand.splice(ps.hand.lastIndexOf(id), 1);
         ps.look.push(...seen);
-        const targets = seen.filter(id => CARDS[id].cost >= 3 && CARDS[id].cost <= 6);
+        const targets = seen.filter(id => e.cost(id) >= 3 && e.cost(id) <= 6);
         if (!targets.length) return e.step('rest');
         e.ask({ p: e.target, kind: 'list', cards: targets, min: 1, max: 1, title: '忍び: 廃棄する札を選ぶ' }, 'burn');
       },

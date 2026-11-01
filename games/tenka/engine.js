@@ -59,13 +59,57 @@ export function take(zone, ids) {
 export function gain(g, pid, id, to = 'discard') {
   if (!(g.supply[id] > 0)) return false;
   g.supply[id] -= 1;
+  const pile = id;
   if (id === 'ruins') id = g.ruinsPile.pop();
+  // 交易路: 勝利点の山から初めて獲得されたら、その山の印が交易路のマットへ移る
+  const tr = g.tradeRoute;
+  if (tr && tr.piles.includes(pile)) {
+    tr.piles = tr.piles.filter(x => x !== pile);
+    tr.mat += 1;
+  }
+  place(g, pid, id, to);
+  return id;
+}
+
+// 廃棄置き場から獲得する（獲得したときの効果も起きる）
+export function gainFromTrash(g, pid, id, to = 'discard') {
+  const i = g.trash.lastIndexOf(id);
+  if (i < 0) return false;
+  g.trash.splice(i, 1);
+  place(g, pid, id, to);
+  return id;
+}
+
+function place(g, pid, id, to) {
   const ps = g.ps[pid];
   if (g.turn && g.turn.p === pid) (g.turn.gained ??= []).push(id);
   if (to === 'hand') ps.hand.push(id);
   else if (to === 'deck') ps.deck.push(id);
   else ps.discard.push(id);
-  return id;
+  // 獲得したときの反応（物見の塔: 手札から / 御朱印: 場から）。今の処理のあとで選ぶ
+  const ops = [];
+  if (ps.hand.includes('bansho')) ops.push({ op: 'step', p: pid, card: 'bansho', step: 'react', data: { id, to } });
+  if (g.turn && g.turn.p === pid && ps.play.includes('goshuin')) ops.push({ op: 'step', p: pid, card: 'goshuin', step: 'react', data: { id, to } });
+  // 同じ処理の中で何枚も獲得したときに、獲得した順に反応できるよう、いったん列に並べる（run が積む）
+  if (ops.length) (g.reactQ ??= []).push(...ops);
+}
+
+// 獲得したときの反応を、獲得した順に実行されるように積む
+function flushReactions(g) {
+  if (g.reactQ?.length) {
+    pushOps(g, ...g.reactQ);
+    g.reactQ = [];
+  }
+}
+
+// 獲得した札が、置いた場所にまだあれば取り出す（反応で廃棄・山札の上へ移すため）
+export function takeGained(g, pid, id, to) {
+  const ps = g.ps[pid];
+  const zone = to === 'hand' ? ps.hand : to === 'deck' ? ps.deck : ps.discard;
+  const i = zone.lastIndexOf(id);
+  if (i < 0) return false;
+  zone.splice(i, 1);
+  return true;
 }
 
 export function trashFromHand(g, pid, ids) {
@@ -92,8 +136,16 @@ export function allCards(g, pid) {
   return [...ps.deck, ...ps.hand, ...ps.discard, ...ps.play, ...ps.aside, ...(ps.dur ?? []), ...(ps.look ?? []), ...held, ...mats];
 }
 
+// 今のコスト。室町の石切場（場にある間、行動札が2安い）と行商人（購入フェーズに、場の行動札1枚につき2安い）で変わる
 export function costOf(g, id) {
-  return card(id).cost;
+  let c = card(id).cost;
+  const t = g.turn;
+  if (t && g.ps[t.p]) {
+    const play = g.ps[t.p].play;
+    if (isType(id, 'action')) c -= 2 * play.filter(x => x === 'ishikiri').length;
+    if (id === 'gyoushou' && t.phase === 'buy') c -= 2 * play.filter(x => isType(x, 'action')).length;
+  }
+  return Math.max(0, c);
 }
 
 // ---- 効果の実行 ----
@@ -113,6 +165,10 @@ function effectContext(g, rng, op) {
     buys: n => (g.turn.buys += n),
     coins: n => (g.turn.coins += n),
     gain: (id, who = e.p, to = 'discard') => gain(g, who, id, to),
+    gainFromTrash: (id, who = e.p, to = 'discard') => gainFromTrash(g, who, id, to),
+    cost: id => costOf(g, id),
+    // 獲得した札を、置いた場所から取り出す（番所・御朱印の反応用）
+    takeGained: (id, to, who = e.p) => takeGained(g, who, id, to),
     trash: (ids, who = e.p) => trashFromHand(g, who, ids),
     // 手札以外（場・めくった札など）から取り除いた札を廃棄する
     trashCard: (id, who = e.p) => trashCards(g, who, [id]),
@@ -163,9 +219,11 @@ export function pushOps(g, ...ops) {
 
 export function run(g, rng) {
   let guard = 0;
+  flushReactions(g);
   while (!g.prompt && g.stack.length) {
     if (guard++ > 10000) throw new Error('効果の処理が終わりません');
     exec(g, rng, g.stack.pop());
+    flushReactions(g);
   }
 }
 

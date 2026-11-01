@@ -141,12 +141,12 @@ export const EDO = {
         if (!ids.length) return;
         e.trash(ids);
         const have = e.g.ps[e.p].coffers;
-        const options = Array.from({ length: have + 1 }, (_, n) => ({ value: n, label: `蓄えを${n}使う（コスト${CARDS[ids[0]].cost + n}まで）` }));
+        const options = Array.from({ length: have + 1 }, (_, n) => ({ value: n, label: `蓄えを${n}使う（コスト${e.cost(ids[0]) + n}まで）` }));
         e.ask({ kind: 'option', title: '越後屋: 蓄えをいくつ使う？', options }, 'spend', { from: ids[0] });
       },
       spend(e, n) {
         e.g.ps[e.p].coffers -= n;
-        const max = CARDS[e.data.from].cost + n;
+        const max = e.cost(e.data.from) + n;
         e.ask({ kind: 'supply', min: 1, maxCost: max, title: `コスト${max}以下の札を獲得` }, 'gain', e.data);
       },
       gain(e, id) {
@@ -200,7 +200,7 @@ export const EDO = {
       trash(e, ids) {
         if (!ids.length) return;
         e.trash(ids);
-        const max = CARDS[ids[0]].cost - 1;
+        const max = e.cost(ids[0]) - 1;
         if (max < 0) return;
         e.step('gain', { max, left: 2 });
       },
@@ -295,7 +295,7 @@ export const EDO = {
         }
       },
       collect(e) {
-        const max = CARDS[e.data.card].cost + 3;
+        const max = e.cost(e.data.card) + 3;
         e.ask({ kind: 'supply', min: 1, maxCost: max, types: ['treasure'], title: `代官: コスト${max}以下の財宝を山札の上に獲得` }, 'gain');
       },
       gain(e, id) {
