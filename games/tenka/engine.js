@@ -124,6 +124,8 @@ function effectContext(g, rng, op) {
       g.prompt = { p: prompt.p ?? e.target ?? e.p, ...prompt, then: { card: e.card, step, data, p: e.p, target: e.target } };
       normalizePrompt(g);
     },
+    // 見ている札（ps.look）を、選んだ順に山札の上へ戻す（先に選んだ札ほど下）。終わったら then の命令へ
+    orderOntoDeck: (who = e.p) => pushOps(g, { op: 'step', p: who, card: '_order', step: 'start', data: {} }),
     // あとで実行する命令を積む（今の処理が終わってから、積んだ順に実行される）
     // 注意: 積んだものはスタックの一番上に乗るので、先に積んである命令（e.play・e.attack など）より先に実行される。
     //       「〜のあとで」にしたいときは、later を先に呼んでから play / attack を呼ぶ
@@ -217,6 +219,7 @@ export function candidates(g, pr) {
     return g.ps[pr.p].hand.filter(id => (!pr.types || pr.types.some(t => isType(id, t))) && (!pr.ids || pr.ids.includes(id)));
   }
   if (pr.kind === 'list') return pr.cards.slice(); // 見せた札の中から1枚選ぶ
+  if (pr.kind === 'name') return nameableCards(g); // 札の名前を1つ言う（町医者・渡り職人など）
   if (pr.kind === 'supply') {
     return Object.keys(g.supply).filter(
       id =>
@@ -228,6 +231,14 @@ export function candidates(g, pr) {
     );
   }
   return pr.options.map(o => o.value);
+}
+
+// 「札の名前を言う」ときの候補: このゲームに出てくる札（供給の札と、誰かが持っている札）
+export function nameableCards(g) {
+  const ids = new Set(Object.keys(g.supply).filter(id => id !== 'ruins'));
+  for (const id of g.ruinsPile ?? []) ids.add(id);
+  for (const p of g.players) for (const id of allCards(g, p)) ids.add(id);
+  return [...ids].sort((a, b) => costOf(g, a) - costOf(g, b));
 }
 
 function resume(g, answer) {

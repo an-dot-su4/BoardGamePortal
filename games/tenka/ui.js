@@ -222,6 +222,12 @@ export function createUI(root, api) {
         h('div', { class: 'game-actions' }, pr.options.map(o => h('button', { class: 'btn primary', type: 'button', onclick: () => send({ type: 'choose', answer: o.value }) }, o.label))),
       );
     }
+    if (pr.kind === 'name') {
+      return h('div', { class: 'result-box tk-prompt' }, head,
+        h('div', { class: 'small' }, '札の名前をタップして選んでください'),
+        h('div', { class: 'tk-row' }, pr.cands.map(id => cardEl(CARDS[id], { size: 'mini', onclick: () => send({ type: 'choose', answer: id }) }))),
+      );
+    }
     if (pr.kind === 'list') {
       return h('div', { class: 'result-box tk-prompt' }, head,
         h('div', { class: 'small' }, 'タップして選んでください'),
@@ -260,7 +266,7 @@ export function createUI(root, api) {
     const c = CARDS[zoomed];
     const n = view.supply[zoomed];
     const canBuy = myTurn && !view.prompt && view.turn.buys > 0 && n > 0 && view.turn.coins >= c.cost && !c.notSupply;
-    const maxOver = canBuy && c.onOverpay ? view.turn.coins - c.cost : 0;
+    const maxOver = canBuy && c.steps?.overpay ? view.turn.coins - c.cost : 0;
     overpay = Math.min(overpay, maxOver);
     const close = () => {
       zoomed = null;
@@ -285,7 +291,7 @@ export function createUI(root, api) {
           h('button', { class: 'btn', type: 'button', onclick: close }, '閉じる'),
         ),
         maxOver > 0
-          ? h('label', { class: 'small', style: { color: '#fff' } }, '多く払う（1文につき銀1枚）: ',
+          ? h('label', { class: 'small', style: { color: '#fff' } }, '多く払う（効果は札の説明を参照）: ',
               h('select', { class: 'input', style: { width: 'auto', display: 'inline-block' }, onchange: e => { overpay = Number(e.target.value); render(); } },
                 Array.from({ length: maxOver + 1 }, (_, k) => h('option', { value: k, selected: k === overpay }, `+${k}文`)),
               ),

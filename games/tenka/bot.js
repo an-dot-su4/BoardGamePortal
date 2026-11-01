@@ -72,7 +72,6 @@ const AI = {
   // 江戸
   shukuba: { chain: true, value: 3 },
   touryou: { chain: true, value: 2 },
-  hikyaku: { value: 4 },
   yose: { chain: true, value: 5 },
   kabuki: { chain: true, value: 5 },
   bantou: { chain: true, value: 5 },
@@ -80,7 +79,10 @@ const AI = {
   echigoya: { value: 5 },
   ukiyoe: { value: 6 },
   sankin: { value: 8 },
-  senryou: { chain: true, value: 5 },
+  ishiya: { value: 2 },
+  machiisha: { value: 3 },
+  daikan: { value: 5 },
+  watari: { value: 6 },
 };
 
 const cost = id => CARDS[id].cost;
@@ -237,6 +239,15 @@ function answerPrompt(g, pid, strategy) {
     const junk = cands.filter(id => keepScore(id) <= 0).sort((a, b) => keepScore(a) - keepScore(b));
     return junk.length >= 2 ? junk.slice(0, 2) : [];
   }
+  if (pr.kind === 'name') {
+    // 町医者は廃棄したい札、渡り職人は手札に要らない札の名前を言う
+    const mine = new Set([...g.ps[pid].deck, ...g.ps[pid].discard]);
+    const pool = cands.filter(id => mine.has(id));
+    const list = pool.length ? pool : cands;
+    return list.sort((a, b) => (card === 'machiisha' ? trashScore(g, pid, b) - trashScore(g, pid, a) : 0) || keepScore(a) - keepScore(b))[0];
+  }
+  if (pr.kind === 'list' && card === '_order') return cands.sort((a, b) => keepScore(a) - keepScore(b))[0]; // 要らない札を下に
+  if (pr.kind === 'list' && card === 'bantou') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0];
   if (pr.kind === 'list' && card === 'kabuki') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0]; // 相手の一番良い札を捨てさせる
   if (pr.kind === 'list' && card === 'yakiuchi') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0]; // 相手の一番良い札
   if (pr.kind === 'list' && card === 'shinobi' && step === 'steal') return cands.sort((a, b) => cost(b) - cost(a))[0];
@@ -250,7 +261,10 @@ function answerPrompt(g, pid, strategy) {
     if (card === 'shoko') return g.turn.actions > 0 ? 'keep' : 'aside';
     if (card === 'ikkou') return 'yes';
     if (card === 'takagari') return 'shouen';
-    if (card === 'hikyaku') return 'no';
+    if (card === 'machiisha') {
+      const id = pr.then.data.card;
+      return trashScore(g, pid, id) > 0 ? 'trash' : keepScore(id) <= 1 ? 'discard' : 'back';
+    }
     if (card === 'echigoya') {
       const base = CARDS[pr.then.data.from].cost;
       const max = pr.options.length - 1;
@@ -271,6 +285,8 @@ function answerPrompt(g, pid, strategy) {
   else if (card === 'tera') picked = pickBy(id => trashScore(g, pid, id), id => trashScore(g, pid, id) > 0);
   else if (card === 'kanekashi') picked = cands.slice(0, 1);
   else if (card === 'gozen' || card === 'shichifuku') picked = [chooseActionFrom(cands.filter(id => id !== 'gozen' && id !== 'shichifuku')) ?? cands[0]].slice(0, 1);
+  else if (card === 'daikan') picked = cands.includes('gin') ? ['gin'] : cands.includes('zeni') ? ['zeni'] : [];
+  else if (card === 'ishiya') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
   else if (card === 'yose') picked = cands.includes('zeni') ? ['zeni'] : [];
   else if (card === 'echigoya') picked = cands.filter(id => trashScore(g, pid, id) > 0 || id === 'kin').sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a)).slice(0, 1);
   else if (card === 'katanagari' || card === 'kobutsu') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);

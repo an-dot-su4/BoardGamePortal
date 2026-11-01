@@ -268,7 +268,7 @@ export function act(g, pid, action, rng = Math.random) {
     if (g.supply[id] <= 0) throw new GameError('その山はもう空です');
     enterBuy(g);
     if (t.buys < 1) throw new GameError('購入がもう残っていません');
-    if (!Number.isInteger(over) || over < 0 || (over > 0 && !card(id).onOverpay)) throw new GameError('多く払う額が正しくありません');
+    if (!Number.isInteger(over) || over < 0 || (over > 0 && !card(id).steps?.overpay)) throw new GameError('多く払う額が正しくありません');
     if (t.coins < card(id).cost + over) throw new GameError(`お金が足りません（${card(id).cost + over}文必要）`);
     if (card(id).canBuy?.(g, pid) === false) throw new GameError(`${card(id).name}は今は買えません（場に銅銭があるなど）`);
     t.coins -= card(id).cost + over;
@@ -284,8 +284,12 @@ export function act(g, pid, action, rng = Math.random) {
       coffers: n => (g.ps[pid].coffers += n),
       log: text => log(g, text),
     };
-    if (over > 0) card(id).onOverpay(x, over);
     for (const c of g.ps[pid].play.slice()) card(c).whileInPlay?.onBuy?.(x, id);
+    // 多く払った効果（選択が要るものもあるので命令として実行）
+    if (over > 0) {
+      pushOps(g, { op: 'step', p: pid, card: id, step: 'overpay', data: { n: over } });
+      run(g, rng);
+    }
     return;
   }
 

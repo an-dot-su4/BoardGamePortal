@@ -1,5 +1,5 @@
 // 江戸「町人文化」: 蓄え（小判のトークン。自分の手番に1枚につき+1文として使える）と過払い
-//   onOverpay(x, n): 買うときに n 文多く払ったときの効果
+//   steps.overpay(e): 買うときに e.data.n 文多く払ったときの効果
 //   startCoffers: この札が王国にあれば、全員が蓄えを持って始める
 import { CARDS } from './index.js';
 
@@ -24,29 +24,11 @@ export const EDO = {
     types: ['treasure'],
     coin: 1,
     text: '+1文\n買うとき、多く払ってもよい。多く払った1文につき銀を1枚獲得する。',
-    onOverpay(x, n) {
-      let got = 0;
-      for (let i = 0; i < n; i++) if (x.gain('gin')) got++;
-      if (got) x.log(`${x.name}: 棟梁に弟子入りした銀が${got}枚`);
-    },
-  },
-  hikyaku: {
-    name: '飛脚',
-    cost: 4,
-    types: ['action'],
-    text: '+1購入\n+2文\n山札をすべて捨て札にしてもよい。',
-    play(e) {
-      e.buys(1);
-      e.coins(2);
-      if (!e.g.ps[e.p].deck.length) return;
-      e.ask({ kind: 'option', title: '山札をすべて捨て札にする？', options: [{ value: 'yes', label: '捨て札にする' }, { value: 'no', label: 'そのまま' }] }, 'dump');
-    },
     steps: {
-      dump(e, choice) {
-        if (choice !== 'yes') return;
-        const ps = e.g.ps[e.p];
-        ps.discard.push(...ps.deck);
-        ps.deck = [];
+      overpay(e) {
+        let got = 0;
+        for (let i = 0; i < e.data.n; i++) if (e.gain('gin')) got++;
+        if (got) e.log(`${e.name()}: 棟梁に弟子入りした銀が${got}枚`);
       },
     },
   },
@@ -100,7 +82,7 @@ export const EDO = {
     name: '番頭',
     cost: 4,
     types: ['action'],
-    text: '+1札\n+1行動\n山札の一番上を公開し、行動札ならそれを使う。',
+    text: '+1札\n+1行動\n山札の一番上を公開し、行動札ならそれを使う。\n買うとき多く払ってもよい。1文につき、捨て札から1枚を選んで山札の上に置く。',
     play(e) {
       e.draw(1);
       e.actions(1);
@@ -115,6 +97,22 @@ export const EDO = {
       } else {
         ps.deck.push(top);
       }
+    },
+    steps: {
+      overpay(e) {
+        e.step('fetch', { left: e.data.n });
+      },
+      fetch(e) {
+        const ps = e.g.ps[e.p];
+        if (e.data.left <= 0 || !ps.discard.length) return;
+        e.ask({ kind: 'list', cards: [...new Set(ps.discard)], min: 1, max: 1, title: `番頭: 捨て札から山札の上に置く札を選ぶ（あと${e.data.left}枚）` }, 'put');
+      },
+      put(e, id) {
+        const ps = e.g.ps[e.p];
+        ps.discard.splice(ps.discard.lastIndexOf(id), 1);
+        ps.deck.push(id);
+        e.step('fetch', { left: e.data.left - 1 });
+      },
     },
   },
   ryougae: {
@@ -189,14 +187,145 @@ export const EDO = {
       },
     },
   },
-  senryou: {
-    name: '千両箱',
-    cost: 6,
-    types: ['treasure'],
-    coin: 2,
-    text: '+2文\n+1蓄え',
+
+  ishiya: {
+    name: '石屋',
+    cost: 2,
+    types: ['action'],
+    text: '手札を1枚廃棄し、それよりコストの低い札を2枚獲得する。\n買うとき多く払ってもよい。払った額とちょうど同じコストの行動札を2枚獲得する。',
     play(e) {
-      e.coffers(1);
+      e.ask({ kind: 'hand', min: 1, max: 1, title: '石屋: 廃棄する札を選ぶ' }, 'trash');
+    },
+    steps: {
+      trash(e, ids) {
+        if (!ids.length) return;
+        e.trash(ids);
+        const max = CARDS[ids[0]].cost - 1;
+        if (max < 0) return;
+        e.step('gain', { max, left: 2 });
+      },
+      gain(e) {
+        if (e.data.left <= 0) return;
+        e.ask({ kind: 'supply', min: 1, maxCost: e.data.max, title: `石屋: コスト${e.data.max}以下の札を獲得（あと${e.data.left}枚）` }, 'got');
+      },
+      got(e, id) {
+        if (id) e.gain(id);
+        e.step('gain', { ...e.data, left: e.data.left - 1 });
+      },
+      overpay(e) {
+        e.step('actionGain', { n: e.data.n, left: 2 });
+      },
+      actionGain(e) {
+        if (e.data.left <= 0) return;
+        e.ask({ kind: 'supply', min: 1, exactCost: e.data.n, types: ['action'], title: `石屋: コストちょうど${e.data.n}の行動札を獲得（あと${e.data.left}枚）` }, 'actionGot');
+      },
+      actionGot(e, id) {
+        if (id) e.gain(id);
+        e.step('actionGain', { ...e.data, left: e.data.left - 1 });
+      },
+    },
+  },
+  machiisha: {
+    name: '町医者',
+    cost: 3,
+    types: ['action'],
+    text: '札の名前を1つ言う。山札の上から3枚を公開し、その名前の札を廃棄する。残りは好きな順で山札の上に戻す。\n買うとき多く払ってもよい。1文につき、山札の一番上を見て、廃棄・捨て札・戻すのどれかにする。',
+    play(e) {
+      e.ask({ kind: 'name', min: 1, max: 1, title: '町医者: 廃棄したい札の名前を選ぶ' }, 'reveal');
+    },
+    steps: {
+      reveal(e, name) {
+        const ps = e.g.ps[e.p];
+        const seen = e.draw(3);
+        for (const id of seen) ps.hand.splice(ps.hand.lastIndexOf(id), 1);
+        const hits = seen.filter(id => id === name);
+        for (const id of hits) e.trashCard(id);
+        ps.look.push(...seen.filter(id => id !== name));
+        e.log(`${e.name()}: 町医者が${cardName(name)}を診て、${hits.length}枚廃棄`);
+        e.orderOntoDeck();
+      },
+      overpay(e) {
+        e.step('check', { left: e.data.n });
+      },
+      check(e) {
+        if (e.data.left <= 0) return;
+        const ps = e.g.ps[e.p];
+        const [top] = e.draw(1);
+        if (!top) return;
+        ps.hand.splice(ps.hand.lastIndexOf(top), 1);
+        ps.look.push(top);
+        e.ask({ kind: 'option', title: `町医者: 山札の一番上は${cardName(top)}`, options: [{ value: 'trash', label: '廃棄' }, { value: 'discard', label: '捨て札' }, { value: 'back', label: '山札に戻す' }] }, 'treat', { ...e.data, card: top });
+      },
+      treat(e, choice) {
+        const ps = e.g.ps[e.p];
+        const id = e.data.card;
+        ps.look.splice(ps.look.indexOf(id), 1);
+        if (choice === 'trash') e.trashCard(id);
+        else if (choice === 'discard') ps.discard.push(id);
+        else ps.deck.push(id);
+        // 戻した札をまた見ないよう、戻したら終わり
+        e.step('check', { left: choice === 'back' ? 0 : e.data.left - 1 });
+      },
+    },
+  },
+  daikan: {
+    name: '代官',
+    cost: 4,
+    types: ['action', 'attack'],
+    text: '手札の財宝を1枚廃棄してもよい。ほかの全員は、手札が5枚以上なら同じ札を1枚捨てる（無ければ手札を見せる）。廃棄した札のコスト+3以下の財宝を1枚、山札の上に獲得する。',
+    play(e) {
+      e.ask({ kind: 'hand', min: 0, max: 1, types: ['treasure'], title: '代官: 年貢として廃棄する財宝を選ぶ' }, 'trash');
+    },
+    steps: {
+      trash(e, ids) {
+        if (!ids.length) return;
+        e.trash(ids);
+        const id = ids[0];
+        e.later({ op: 'step', p: e.p, card: 'daikan', step: 'collect', data: { card: id } }); // 攻撃のあとで
+        e.attack('hit', { card: id });
+      },
+      hit(e) {
+        const hand = e.hand(e.target);
+        if (hand.length < 5) return;
+        if (hand.includes(e.data.card)) {
+          e.discard([e.data.card], e.target);
+          e.log(`${e.name(e.target)}: ${cardName(e.data.card)}を差し出した`);
+        } else {
+          e.log(`${e.name(e.target)}: ${cardName(e.data.card)}なし（手札: ${hand.map(cardName).join('・')}）`);
+        }
+      },
+      collect(e) {
+        const max = CARDS[e.data.card].cost + 3;
+        e.ask({ kind: 'supply', min: 1, maxCost: max, types: ['treasure'], title: `代官: コスト${max}以下の財宝を山札の上に獲得` }, 'gain');
+      },
+      gain(e, id) {
+        if (id) e.gain(id, e.p, 'deck');
+      },
+    },
+  },
+  watari: {
+    name: '渡り職人',
+    cost: 5,
+    types: ['action'],
+    text: '札の名前を1つ言う。その名前でない札が3枚出るまで山札をめくり、その3枚を手札に加え、残りは捨てる。',
+    play(e) {
+      e.ask({ kind: 'name', min: 1, max: 1, title: '渡り職人: 手札に入れたくない札の名前を選ぶ' }, 'reveal');
+    },
+    steps: {
+      reveal(e, name) {
+        const ps = e.g.ps[e.p];
+        let kept = 0;
+        const skipped = [];
+        while (kept < 3) {
+          const [id] = e.draw(1);
+          if (!id) break;
+          if (id === name) {
+            ps.hand.splice(ps.hand.lastIndexOf(id), 1);
+            skipped.push(id);
+          } else kept++;
+        }
+        ps.discard.push(...skipped);
+      },
     },
   },
 };

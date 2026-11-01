@@ -13,7 +13,7 @@ function fresh(n = 2, hand = [], options = { preset: 'heian-first' }) {
   g.turn = { p, phase: 'action', actions: 1, buys: 1, coins: 0, bought: [] };
   g.ps[p].hand = hand.slice();
   g.ps[p].deck = Array(10).fill('gin');
-  for (const id of Object.keys(T.CARDS)) if (!(id in g.supply)) g.supply[id] = 10;
+  for (const id of Object.keys(T.CARDS)) if (!(id in g.supply) && !T.CARDS[id].notSupply && !T.CARDS[id].hidden) g.supply[id] = 10;
   return { g, p, o: g.players[1] };
 }
 const play = (g, p, card) => T.act(g, p, { type: 'play', card }, seededRng(2));

@@ -27,18 +27,6 @@ export const EDO_ART = {
     <path d="M150 116 h36 v-24" stroke="#5d6772" stroke-width="4" fill="none"/>
     <circle cx="100" cy="60" r="10" fill="#f3d7b6"/><path d="M90 58 h20 v-4 h-20z" fill="#2c3e66"/>`,
 
-  // 飛脚: 状箱を担いで駆ける飛脚
-  hikyaku: () => `
-    <defs>${skyGradient('hikyaku-sky', '#9fc4dd', '#f6ecd6')}</defs>
-    <rect width="${W}" height="${H}" fill="url(#hikyaku-sky)"/>
-    <rect y="104" width="${W}" height="26" fill="#d8c39a"/>
-    <g stroke="#fff" stroke-width="3" opacity=".8">${[50, 64, 78].map(y => `<path d="M10 ${y} h40"/>`).join('')}</g>
-    <circle cx="110" cy="44" r="9" fill="#f3d7b6"/><path d="M102 40 h16 v-4 h-16z" fill="#1d1d1d"/>
-    <path d="M110 54 L104 80 L84 104 M104 80 L124 102 L138 98" stroke="#f3d7b6" stroke-width="7" stroke-linecap="round" fill="none"/>
-    <path d="M102 56 h16 l-4 26 h-12z" fill="#2c3e66"/>
-    <path d="M116 60 L146 34" stroke="#5c3b22" stroke-width="3"/>
-    <rect x="140" y="20" width="26" height="18" fill="#2b2014" stroke="#8a6410"/><path d="M140 26 h26" stroke="#b8322a" stroke-width="2"/>
-    <path d="M104 62 L84 70" stroke="#f3d7b6" stroke-width="5" stroke-linecap="round"/>`,
 
   // 寄席: 座布団の上で扇子を持つ噺家と、高座の提灯
   yose: () => `
@@ -125,14 +113,55 @@ export const EDO_ART = {
     ${person(70, 106, '#5c4a3a', 0.8)}${person(134, 106, '#5c4a3a', 0.8)}
     ${[158, 176, 194].map(x => person(x, 106, '#2c3e66', 0.7)).join('')}`,
 
-  // 千両箱: 小判のあふれる千両箱
-  senryou: () => `
-    <defs><radialGradient id="senryou-g" cx=".5" cy=".55" r=".6"><stop offset="0" stop-color="#ffe9a0"/><stop offset="1" stop-color="#3a1e14" stop-opacity="0"/></radialGradient></defs>
-    ${washi('#2a1a10', 'senryou')}
-    <circle cx="100" cy="70" r="64" fill="url(#senryou-g)" opacity=".6"/>
-    <rect x="50" y="62" width="100" height="50" fill="#3b2014" stroke="#8a6410" stroke-width="2"/>
-    <g stroke="#8a6410" stroke-width="3">${[66, 100, 134].map(x => `<path d="M${x} 62 v50"/>`).join('')}</g>
-    <path d="M50 62 L56 40 H144 L150 62" fill="#4a2a18" stroke="#8a6410" stroke-width="2"/>
-    <rect x="88" y="78" width="24" height="14" fill="#fbf6e6"/><text x="100" y="89" text-anchor="middle" font-family="serif" font-size="9" font-weight="700" fill="#8e2418">千両</text>
-    ${koban(72, 54, -10)}${koban(96, 48, 6)}${koban(122, 52, -4)}${koban(140, 66, 20)}${koban(60, 112, 0)}${koban(148, 114, -12)}`,
+
+  // 石屋: 石灯籠を刻む石工と、割った石
+  ishiya: () => `
+    ${washi('#d8d0c0', 'ishiya')}
+    <rect y="104" width="${W}" height="26" fill="#a09a8a"/>
+    <path d="M110 104 h40 v-8 h-40z M116 96 h28 v-30 h-28z M106 66 h48 l-8 -14 h-32z M120 52 h20 v-10 h-20z M114 42 h32 l-16 -14z" fill="#9a968c" stroke="#6a665c"/>
+    <rect x="122" y="72" width="16" height="16" fill="#3b3a36"/>
+    ${[[30, 112, 14], [54, 116, 9], [180, 114, 10]].map(([x, y, r]) => `<path d="M${x - r} ${y} l${r * 0.6} -${r} l${r} ${r * 0.2} l${r * 0.4} ${r * 0.8}z" fill="#b0aa9c" stroke="#6a665c"/>`).join('')}
+    <circle cx="70" cy="60" r="9" fill="#f3d7b6"/><path d="M60 58 h20 v-4 h-20z" fill="#2c3e66"/>
+    <path d="M58 104 L64 70 h12 l8 34z" fill="#5c4a3a"/>
+    <path d="M78 74 L104 66" stroke="#f3d7b6" stroke-width="5" stroke-linecap="round"/><path d="M100 60 l8 10" stroke="#5d6772" stroke-width="3"/>
+    <path d="M70 78 L96 84" stroke="#f3d7b6" stroke-width="5" stroke-linecap="round"/><rect x="92" y="78" width="12" height="8" fill="#6b4a2b" transform="rotate(-20 98 82)"/>
+    <g fill="#fff">${[[110, 62], [114, 56], [106, 58]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.2"/>`).join('')}</g>`,
+
+  // 町医者: 薬箱と薬研、干した薬草
+  machiisha: () => `
+    ${washi('#e6dcc4', 'machiisha')}
+    <path d="M10 16 H190" stroke="#5c3b22" stroke-width="2"/>
+    ${[30, 60, 90, 120, 150, 176].map((x, i) => `<path d="M${x} 16 v8" stroke="#5c3b22"/><path d="M${x - 6} 24 q6 ${18 + (i % 2) * 6} 12 0z" fill="${['#6a8a3a', '#8a7a3a', '#4e7a3a'][i % 3]}"/>`).join('')}
+    <rect y="100" width="${W}" height="30" fill="#a07a4f"/>
+    <rect x="24" y="52" width="60" height="50" fill="#2b2014" stroke="#8a6410"/>
+    ${[0, 1, 2].map(r => [0, 1, 2].map(c => `<rect x="${28 + c * 19}" y="${56 + r * 15}" width="15" height="12" fill="#5c3b22"/><circle cx="${35.5 + c * 19}" cy="${62 + r * 15}" r="1.5" fill="#e6c46a"/>`).join('')).join('')}
+    <path d="M110 100 h70 l-8 -16 h-54z" fill="#6b5a4a"/><path d="M118 86 Q145 98 172 86" fill="#3b3028"/>
+    <circle cx="145" cy="82" r="10" fill="none" stroke="#5d6772" stroke-width="3"/><path d="M130 82 h30" stroke="#5c3b22" stroke-width="3"/>
+    <rect x="96" y="70" width="16" height="12" fill="#fbf6e6" stroke="#8a6a3a"/><text x="104" y="79" text-anchor="middle" font-family="serif" font-size="7" font-weight="700" fill="#b8322a">薬</text>`,
+
+  // 代官: 年貢の俵を前に、帳面を開く代官
+  daikan: () => `
+    ${washi('#e6d3a0', 'daikan')}
+    <rect y="0" width="${W}" height="18" fill="#3b2a1a"/>
+    <rect y="96" width="${W}" height="34" fill="#c9b48a"/>
+    <path d="M70 98 Q100 46 130 98Z" fill="#3b2a50"/>
+    <circle cx="100" cy="54" r="11" fill="#f3d7b6"/><path d="M90 50 h20 v-6 h-20z" fill="#1d1d1d"/>
+    <path d="M92 58 q8 -3 16 0" stroke="#2b2014" stroke-width="2" fill="none"/>
+    <path d="M70 98 L80 70 M130 98 L120 70" stroke="#2b2a50" stroke-width="10"/>
+    <rect x="84" y="86" width="32" height="14" fill="#fbf6e6" stroke="#8a6a3a"/><g stroke="#2b2620" stroke-width=".8">${[90, 96, 102, 108].map(x => `<path d="M${x} 88 v10"/>`).join('')}</g>
+    ${[[24, 104], [48, 104], [36, 90], [152, 104], [176, 104], [164, 90]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="13" ry="9" fill="#d8c08a" stroke="#8a6a3a"/><path d="M${x - 8} ${y - 6} v12 M${x + 8} ${y - 6} v12" stroke="#8a6a3a" stroke-width="1.5"/>`).join('')}`,
+
+  // 渡り職人: 道具箱を背負い、笠をかぶって旅する職人
+  watari: () => `
+    <defs>${skyGradient('watari-sky', '#a9cfe0', '#f2ead6')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#watari-sky)"/>
+    <path d="M0 70 Q60 50 120 66 T200 60 V130 H0Z" fill="#9cc58a"/>
+    <path d="M60 130 Q90 100 130 90 T200 80" stroke="#e4cf9c" stroke-width="14" fill="none"/>
+    <path d="M86 62 L104 48 L122 62Z" fill="#c9a46a" stroke="#8a6a3a"/>
+    <circle cx="104" cy="68" r="7" fill="#f3d7b6"/>
+    <path d="M94 78 h20 l4 30 h-28z" fill="#3d5a7a"/>
+    <path d="M98 108 l-6 16 M110 108 l8 16" stroke="#3d5a7a" stroke-width="5" stroke-linecap="round"/>
+    <rect x="114" y="72" width="22" height="26" fill="#8a5a2f" stroke="#5c3b22"/><path d="M114 80 h22" stroke="#5c3b22"/>
+    <path d="M136 72 l10 -16" stroke="#5d6772" stroke-width="3"/><path d="M118 72 l-4 -18" stroke="#6b4a2b" stroke-width="3"/>
+    <path d="M94 84 L84 100" stroke="#f3d7b6" stroke-width="4" stroke-linecap="round"/><path d="M84 100 L80 124" stroke="#6b4a2b" stroke-width="2"/>`,
 };
