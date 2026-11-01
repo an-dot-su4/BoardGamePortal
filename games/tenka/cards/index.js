@@ -10,7 +10,7 @@ export const SETS = [
   { id: 'heian', name: '平安', era: '基本', ready: true, feature: '基本セット（本家の基本セット初版と同じ25種）。引く・行動を増やす・妨害・圧縮。単体で遊べる。' },
   { id: 'kamakura', name: '鎌倉', ready: true, feature: '持続（御恩と奉公。本家の海辺・初版と同じ26種）: 次の手番にも効く札・マット。' },
   { id: 'muromachi', name: '室町', ready: true, feature: '財宝と文化（本家の繁栄・初版と同じ25種）: 大判・御所・名声（勝利点トークン）・コストが下がる札・獲得したときの反応。' },
-  { id: 'sengoku', name: '戦国', ready: true, feature: '下剋上: 廃棄・落武者・戦利品・激しい妨害。' },
+  { id: 'sengoku', name: '戦国', ready: true, feature: '下剋上（本家の暗黒時代と同じ35種）: 廃棄・落武者・戦利品・避難所・名のある武者・廃棄されたときの効果。' },
   { id: 'edo', name: '江戸', ready: true, feature: '町人文化: 蓄え（小判）・多く払うと得をする札・札の名前を言う札。' },
 ];
 
@@ -35,6 +35,8 @@ export const PRESETS = [
   { id: 'muromachi-chanoyu', name: '茶の湯と名声', note: '平安＋室町。名声で点を稼ぐ', cards: ['chanoyu', 'jisha', 'kinkaku', 'za', 'sakaya', 'sato', 'tera', 'shakyo', 'ichi', 'koubou'] },
   { id: 'muromachi-fushin', name: '普請と鍛冶', note: '室町だけ。安くして作り替える', cards: ['kashiage', 'bashaku', 'bansho', 'ishikiri', 'omamori', 'tsuchiikki', 'goshuin', 'fushin', 'katanakaji', 'gyoushou'] },
   { id: 'sengoku-gekokujo', name: '下剋上', note: '戦国だけ。廃棄と格上げ', cards: ['rakuichi', 'katanagari', 'yamashiro', 'randori', 'gekokujo', 'chigyou', 'kobutsu', 'nobushi', 'ikkou', 'takagari'] },
+  { id: 'sengoku-musha', name: '傾奇者と武者', note: '戦国だけ。武者の山と化ける札', cards: ['koshou', 'rounin', 'gunshi', 'akudou', 'kanamono', 'biwa', 'kabukimono', 'bushi', 'miko', 'gomadan'] },
+  { id: 'sengoku-haikyo', name: '廃墟と墓荒らし', note: '戦国だけ。廃棄から得をする', cards: ['binbou', 'monogoi', 'inja', 'naya', 'shikabane', 'nezumi', 'kuzuhiroi', 'yomi', 'hakaarashi', 'saiken'] },
   { id: 'sengoku-ran', name: '戦乱の世', note: '平安＋戦国。攻めと結界', cards: ['randori', 'ikkou', 'yakiuchi', 'shinobi', 'kekkai', 'tera', 'sato', 'shakyo', 'ichi', 'zouei'] },
   { id: 'edo-chounin', name: '町人の世', note: '江戸だけ。蓄えをためて使う', cards: ['shukuba', 'touryou', 'ishiya', 'yose', 'kabuki', 'bantou', 'ryougae', 'echigoya', 'ukiyoe', 'watari'] },
   { id: 'edo-akinai', name: '商いの都', note: '室町＋江戸。財宝と蓄え', cards: ['ryougae', 'ukiyoe', 'daikan', 'touryou', 'yose', 'za', 'chanoyu', 'kuramoto', 'dosou', 'sakaya'] },

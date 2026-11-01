@@ -123,7 +123,9 @@ export function createUI(root, api) {
   function supplyBox(myTurn) {
     const pile = id => {
       // 落武者の山は、一番上の札を見せる
-      const base = id === 'ruins' && view.ruinsTop ? { ...CARDS[view.ruinsTop], id: 'ruins', name: `落武者の山（${CARDS[view.ruinsTop].name}）` } : CARDS[id];
+      // 落武者の山・名のある武者の山は、一番上の札を見せる
+      const top = id === 'ruins' ? view.ruinsTop : id === 'bushi' ? view.knightsTop : null;
+      const base = top ? { ...CARDS[top], id, name: `${CARDS[top].name}`, art: top } : CARDS[id];
       // 石切場・行商人でコストが変わっていれば、今のコストで見せる
       const c = view.costs?.[id] !== undefined && view.costs[id] !== base.cost ? { ...base, cost: view.costs[id] } : base;
       const n = view.supply[id];

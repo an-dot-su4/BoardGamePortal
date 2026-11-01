@@ -76,20 +76,29 @@ export function setup(players, rng = Math.random, options = {}) {
   supply.tatari = 10 * (n - 1);
   // 戦国: 戦利品を出す札があれば戦利品の山、落武者を配る札があれば落武者の山（4種を混ぜる）
   if (kingdom.some(id => card(id).spoils)) supply.senrihin = 15;
+  // 落武者の山: 5種を10枚ずつ混ぜ、そこから 10×(人数−1) 枚
   let ruinsPile = [];
   if (kingdom.some(id => card(id).ruins)) {
     const count = 10 * (n - 1);
-    const kinds = ['ochimusha', 'yakedera', 'arechi', 'haison'];
-    ruinsPile = shuffle(Array.from({ length: count }, (_, i) => kinds[i % kinds.length]), rng);
+    const kinds = ['ochimusha', 'yakedera', 'arechi', 'haison', 'ikinokori'];
+    ruinsPile = shuffle(kinds.flatMap(k => Array(10).fill(k)), rng).slice(0, count);
     supply.ruins = count;
   }
+  // 名のある武者: 10人を混ぜた山
+  const knightsPile = kingdom.includes('bushi') ? shuffle(Object.keys(CARDS).filter(id => id.startsWith('bushi_')), rng) : [];
+  // 隠者 → 狂人、悪童 → 雑賀衆（供給の外の山）
+  if (kingdom.some(id => card(id).madman)) supply.kyoujin = 10;
+  if (kingdom.some(id => card(id).mercenary)) supply.saikashu = 10;
+  // 戦国: 王国に戦国の札が多いほど、田3枚の代わりに避難所が配られやすい
+  const sen = kingdom.filter(id => card(id).set === 'sengoku').length;
+  const shelters = sen > 0 && rng() < sen / KINGDOM_SIZE;
   // 室町: 王国に室町の札が多いほど、大判と御所が加わりやすい
   const muro = kingdom.filter(id => card(id).set === 'muromachi').length;
   if (muro > 0 && rng() < muro / KINGDOM_SIZE) {
     supply.ohban = 12;
     supply.gosho = victoryPile;
   }
-  for (const id of kingdom) supply[id] = isType(id, 'victory') ? victoryPile : 10;
+  for (const id of kingdom) supply[id] = card(id).pile ?? (isType(id, 'victory') ? victoryPile : 10);
   // 室町の馬借: 勝利点の各山に印を置く
   const tradeRoute = kingdom.some(id => card(id).tradeRoute) ? { piles: Object.keys(supply).filter(id => isType(id, 'victory')), mat: 0 } : null;
 
@@ -100,6 +109,7 @@ export function setup(players, rng = Math.random, options = {}) {
     kingdom,
     supply,
     ruinsPile,
+    knightsPile,
     embargo: {}, // 関所の札が置かれた山: { 山のID: 枚数 }
     tradeRoute, // 馬借: { piles: 印が残っている山, mat: マットの印の数 }
     trash: [],
@@ -113,7 +123,8 @@ export function setup(players, rng = Math.random, options = {}) {
     log: ['⛩️ 天下札、開始！ 王国: ' + kingdom.map(id => card(id).name).join('・')],
   };
   for (const pid of ids) {
-    g.ps[pid] = { deck: shuffle([...Array(7).fill('zeni'), ...Array(3).fill('ta')], rng), hand: [], discard: [], play: [], aside: [], dur: [], durNext: [], durEffects: [], look: [], fame: 0, mats: { native: [], island: [], pirate: 0 }, lastGained: [], coffers: kingdom.reduce((a, id) => Math.max(a, card(id).startCoffers ?? 0), 0), turns: 0 };
+    const start = shelters ? ['hottate', 'muenzuka', 'areyashiki'] : Array(3).fill('ta');
+    g.ps[pid] = { deck: shuffle([...Array(7).fill('zeni'), ...start], rng), hand: [], discard: [], play: [], aside: [], dur: [], durNext: [], durEffects: [], look: [], fame: 0, mats: { native: [], island: [], pirate: 0 }, lastGained: [], coffers: kingdom.reduce((a, id) => Math.max(a, card(id).startCoffers ?? 0), 0), turns: 0 };
     draw(g, rng, pid, HAND_SIZE);
   }
   startTurn(g, ids[Math.floor(rng() * n)], rng);
@@ -141,6 +152,8 @@ function cleanup(g, rng) {
   const ps = g.ps[pid];
   g.turn.phase = 'cleanup';
   const hooks = ps.play.filter(id => card(id).steps?.onCleanup).map(id => ({ op: 'step', p: pid, card: id, step: 'onCleanup', data: {} }));
+  // 傾奇者が化けている札の「場から捨てるとき」
+  if (ps.play.includes('kabukimono')) for (const id of ps.misfitsAs ?? []) if (card(id).steps?.onCleanup) hooks.push({ op: 'step', p: pid, card: id, self: 'kabukimono', step: 'onCleanup', data: {} });
   pushOps(g, ...hooks, { op: 'cleanup' });
   run(g, rng);
 }
@@ -153,7 +166,7 @@ function finishCleanup(g, rng) {
   // この手番に使った持続札は捨てずに残す（御前で使った持続札は、御前も一緒に残る）
   const tokens = new Set();
   for (const entry of ps.durNext) {
-    const keep = [entry.id];
+    const keep = [entry.physical ?? entry.id];
     if (entry.via) {
       if (tokens.has(entry.via)) continue;
       tokens.add(entry.via);
@@ -168,6 +181,8 @@ function finishCleanup(g, rng) {
   ps.durNext = [];
   ps.discard.push(...ps.play, ...ps.hand);
   ps.play = [];
+  ps.misfitsAs = [];
+  g.misfitsChoice = {};
   ps.hand = [];
   ps.lastGained = g.turn.gained ?? [];
   // 早馬: 手札は3枚だけ引き、もう一度自分の手番（2回続けては不可）
@@ -307,12 +322,16 @@ export function act(g, pid, action, rng = Math.random) {
       cost: cid => costOf(g, cid),
       log: text => log(g, text),
     };
-    for (const c of g.ps[pid].play.slice()) card(c).whileInPlay?.onBuy?.(x, id);
+    const ps = g.ps[pid];
+    const inPlay = [...ps.play, ...(ps.play.includes('kabukimono') ? (ps.misfitsAs ?? []) : [])];
+    for (const c of inPlay) card(c).whileInPlay?.onBuy?.(x, id);
     // 関所: その山に置かれた関所の数だけ祟りを獲得
     for (let i = 0; i < (g.embargo[id] ?? 0); i++) if (gain(g, pid, 'tatari')) log(g, `${nameOf(g, pid)}: 関所で祟りを受けた`);
     // 買った札自身の「買ったとき」の効果（鋳銭所）と、多く払った効果（選択が要るものもあるので命令として実行）
     const ops = [];
     if (card(id).steps?.onBuy) ops.push({ op: 'step', p: pid, card: id, step: 'onBuy', data: {} });
+    // 掘っ立て小屋: 勝利点の札を買ったとき、手札から廃棄してよい
+    if (isType(id, 'victory') && ps.hand.includes('hottate')) ops.push({ op: 'step', p: pid, card: 'hottate', step: 'react', data: {} });
     if (over > 0) ops.push({ op: 'step', p: pid, card: id, step: 'overpay', data: { n: over } });
     pushOps(g, ...ops);
     run(g, rng); // 獲得したときの反応（番所・御朱印）もここで処理する
@@ -347,6 +366,7 @@ export function view(g, pid) {
     trashCount: g.trash.length,
     trashTop: g.trash[g.trash.length - 1] ?? null,
     ruinsTop: g.ruinsPile?.[g.ruinsPile.length - 1] ?? null,
+    knightsTop: g.knightsPile?.[g.knightsPile.length - 1] ?? null,
     embargo: g.embargo ?? {},
     tradeRoute: g.tradeRoute ?? null,
     costs: Object.fromEntries(Object.keys(g.supply).map(id => [id, costOf(g, id)])),

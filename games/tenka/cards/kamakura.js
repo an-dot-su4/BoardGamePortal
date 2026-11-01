@@ -228,10 +228,10 @@ export const KAMAKURA = {
     play(e) {
       e.coins(2);
       const play = e.g.ps[e.p].play;
-      const i = play.lastIndexOf('sekisho');
+      const i = play.lastIndexOf(e.self);
       if (i >= 0) {
         play.splice(i, 1);
-        e.trashCard('sekisho');
+        e.trashCard(e.self);
       }
       e.ask({ kind: 'supply', min: 1, allPiles: true, title: '関所を置く山を選ぶ' }, 'place');
     },
@@ -355,7 +355,7 @@ export const KAMAKURA = {
     text: '2点\nこの札と手札の札1枚を、隠岐の島のマットに置く（ゲームの終わりまで戻らない。得点には数える）。',
     play(e) {
       const ps = e.g.ps[e.p];
-      const i = ps.play.lastIndexOf('oki');
+      const i = ps.play.lastIndexOf(e.self);
       if (i >= 0) ps.mats.island.push(...ps.play.splice(i, 1));
       e.ask({ kind: 'hand', min: 1, max: 1, title: '隠岐の島に送る札を選ぶ' }, 'exile');
     },
@@ -483,11 +483,11 @@ export const KAMAKURA = {
     text: 'この札と、手札のもう1枚の埋蔵金の図を廃棄する。2枚とも廃棄したら、金を4枚山札の上に獲得する。',
     play(e) {
       const ps = e.g.ps[e.p];
-      const i = ps.play.lastIndexOf('maizou');
+      const i = ps.play.lastIndexOf(e.self);
       const self = i >= 0;
       if (self) {
         ps.play.splice(i, 1);
-        e.trashCard('maizou');
+        e.trashCard(e.self);
       }
       const other = ps.hand.includes('maizou');
       if (other) e.trash(['maizou']);
@@ -543,7 +543,7 @@ export const KAMAKURA = {
       keep(e, choice) {
         if (choice !== 'top') return;
         const ps = e.g.ps[e.p];
-        const i = ps.play.lastIndexOf('kumonjo');
+        const i = ps.play.lastIndexOf(e.self);
         if (i >= 0) ps.deck.push(...ps.play.splice(i, 1));
       },
     },

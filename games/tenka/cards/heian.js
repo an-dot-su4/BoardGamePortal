@@ -337,10 +337,10 @@ export const HEIAN = {
     text: 'この札を廃棄する。コスト5以下の札を1枚獲得する。',
     play(e) {
       const play = e.g.ps[e.p].play;
-      const i = play.lastIndexOf('sechie');
+      const i = play.lastIndexOf(e.self);
       if (i >= 0) {
         play.splice(i, 1);
-        e.trashCard('sechie');
+        e.trashCard(e.self);
       }
       e.ask({ kind: 'supply', min: 1, maxCost: 5, title: '節会: コスト5以下の札を獲得' }, 'gain');
     },

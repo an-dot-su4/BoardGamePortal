@@ -30,6 +30,7 @@ function placeholder(card) {
 export const HAS_ART = new Set(Object.keys(ART));
 
 export function artSvg(card) {
-  const body = ART[card.id] ? ART[card.id]() : placeholder(card);
+  const key = card.art ?? card.id; // 山の一番上の札の絵を見せるとき（落武者・武者）は art で指定
+  const body = ART[key] ? ART[key]() : placeholder(card);
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${card.name}" preserveAspectRatio="xMidYMid slice">${body}</svg>`;
 }

@@ -102,6 +102,43 @@ const AI = {
   yakiuchi: { value: 5 },
   shinobi: { value: 6 },
   takagari: { value: 7 },
+  ikinokori: { value: 0 },
+  muenzuka: { chain: true, value: 1 },
+  kyoujin: { chain: true, value: 6 },
+  saikashu: { value: 6 },
+  binbou: { value: 2 },
+  monogoi: { value: 1 },
+  koshou: { value: 2 },
+  rounin: { chain: true, value: 3 },
+  inja: { value: 3 },
+  gunshi: { chain: true, value: 4 },
+  naya: { value: 3 },
+  akudou: { chain: true, value: 5 },
+  bugugura: { value: 3 },
+  shikabane: { value: 4 },
+  kanamono: { chain: true, value: 5 },
+  nezumi: { chain: true, value: 1 },
+  kuzuhiroi: { value: 3 },
+  biwa: { chain: true, value: 5 },
+  kabukimono: { value: 4 },
+  yomi: { value: 6 },
+  kokujin: { value: 4 },
+  nisegane: { chain: true, value: 4 },
+  hakaarashi: { value: 3 },
+  bushi: { value: 6 },
+  bushi_tomoe: { value: 6 },
+  bushi_hangaku: { value: 5 },
+  bushi_tsuru: { chain: true, value: 6 },
+  bushi_naotora: { value: 6 },
+  bushi_ginchiyo: { value: 7 },
+  bushi_tadakatsu: { chain: true, value: 7 },
+  bushi_yukimura: { value: 8 },
+  bushi_keiji: { value: 6 },
+  bushi_kansuke: { value: 8 },
+  bushi_kiyomasa: { value: 5 },
+  miko: { chain: true, value: 4 },
+  saiken: { chain: true, value: 3 },
+  gomadan: { value: 5 },
   // 江戸
   shukuba: { chain: true, value: 3 },
   touryou: { chain: true, value: 2 },
@@ -167,6 +204,12 @@ function useful(g, pid, id) {
   if (id === 'gekokujo') return hand.some(c => isType(c, 'action') && c !== 'gekokujo');
   if (id === 'gozen' || id === 'shichifuku') return hand.filter(c => isType(c, 'action') && c !== 'gozen' && c !== 'shichifuku').length > 0;
   if (id === 'zouei') return hand.some(c => c !== 'zouei');
+  // 見張りは3枚のうち1枚を必ず廃棄するので、札が少ないときは使わない
+  if (id === 'mihari') return totalCards(g, pid) >= 10;
+  // 寺社造営は手札を必ず1枚廃棄する。お金が細っているときは、廃棄してよい札があるときだけ
+  if (id === 'nezumi') return hand.some(c => c !== 'nezumi' && trashScore(g, pid, c) > 0) || (allMoney(g, pid) >= 12 && hand.some(c => c !== 'nezumi' && keepScore(c) < 2));
+  if (id === 'jisha') return allMoney(g, pid) >= 10 || hand.some(c => c !== 'jisha' && trashScore(g, pid, c) > 0);
+  if (id === 'binbou') return hand.filter(c => isType(c, 'treasure')).length < 3;
   if (id === 'kanjou') return g.ps[pid].discard.includes('zeni');
   if (id === 'chuusen') return hand.some(c => isType(c, 'treasure'));
   if (id === 'katanakaji') return hand.some(c => trashScore(g, pid, c) > 0);
@@ -203,6 +246,11 @@ function wants(g, pid, id, strategy) {
   return count(g, pid, id) < 2;
 }
 
+function allMoney(g, pid) {
+  const ps = g.ps[pid];
+  return [...ps.deck, ...ps.hand, ...ps.discard, ...ps.play].reduce((a, id) => a + (CARDS[id].coin ?? 0), 0);
+}
+
 function totalCards(g, pid) {
   const ps = g.ps[pid];
   return ps.deck.length + ps.hand.length + ps.discard.length + ps.play.length;
@@ -224,6 +272,9 @@ export function chooseBuy(g, pid, strategy = 'normal') {
   if (favs.length) return favs.sort((a, b) => cost(b) - cost(a))[0];
   if (coins >= 2 && left <= 2 && can('ta')) return 'ta';
   if (coins >= 3 && can('gin')) return 'gin';
+  // 武者や廃棄で財宝が減りすぎたら、銅銭で立て直す（行き詰まり防止）
+  const money = allMoney(g, pid);
+  if (money < 7 && can('zeni')) return 'zeni';
   return null;
 }
 
@@ -280,6 +331,23 @@ function answerPrompt(g, pid, strategy) {
     return junk.length >= 2 ? junk.slice(0, 2) : [];
   }
   if (card === 'kuramoto' && step === 'agree') return g.ps[pid].hand.filter(id => keepScore(id) <= 0).length >= 2 ? 'yes' : 'no';
+  if (pr.kind === 'name' && card === 'saiken') return cands.includes('kuni') ? 'kuni' : cands[0];
+  if (pr.kind === 'name' && card === 'miko') {
+    // 山札で一番多い札を言う
+    const n = {};
+    for (const id of g.ps[pid].deck) n[id] = (n[id] ?? 0) + 1;
+    const best = Object.keys(n).sort((a, b) => n[b] - n[a])[0];
+    return best && cands.includes(best) ? best : cands[0];
+  }
+  if (card === 'saikashu' && step === 'agree') return g.ps[pid].hand.filter(id => trashScore(g, pid, id) > 0 || keepScore(id) <= 0).length >= 2 ? 'yes' : 'no';
+  if (card === 'inja' && step === 'src') {
+    const ps = g.ps[pid];
+    if (ps.hand.some(id => !isType(id, 'treasure') && trashScore(g, pid, id) > 0)) return 'hand';
+    if (ps.discard.some(id => !isType(id, 'treasure') && trashScore(g, pid, id) > 0)) return 'discard';
+    return 'none';
+  }
+  if (pr.kind === 'list' && card === 'kuzuhiroi') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0];
+  if (pr.kind === 'list' && card === 'inja') return cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a))[0];
   if (pr.kind === 'name' && card === 'shichusen') return ['gosho', 'kuni', 'kin'].find(id => cands.includes(id) && g.supply[id] > 0) ?? cands[0];
   if (pr.kind === 'name') {
     // 町医者は廃棄したい札、渡り職人は手札に要らない札の名前を言う
@@ -320,6 +388,17 @@ function answerPrompt(g, pid, strategy) {
     }
     if (card === 'goshuin') return keepScore(pr.then.data.id) >= 3 ? 'yes' : 'no';
     if (card === 'chuusen') return 'no';
+    if (card === 'koshou') return g.turn.actions === 0 && g.ps[pid].hand.some(id => isType(id, 'action')) ? 'actions' : 'silver';
+    if (card === 'kanamono') return keepScore(pr.then.data.card) <= 0 ? 'discard' : 'keep';
+    if (card === 'yomi') return g.ps[pid].look.reduce((a, id) => a + keepScore(id), 0) >= 6 ? 'take' : 'discard';
+    if (card === 'ikinokori') return g.ps[pid].look.reduce((a, id) => a + keepScore(id), 0) >= 4 ? 'back' : 'discard';
+    if (card === 'hakaarashi') return g.trash.some(id => costOf(g, id) >= 3 && costOf(g, id) <= 6) ? 'rob' : 'upgrade';
+    if (card === 'kokujin' && step === 'first') {
+      const hand = g.ps[pid].hand;
+      return hand.length >= 2 ? 'discard' : hand.length ? 'top' : 'copper';
+    }
+    if (card === 'kokujin') return g.supply.kuni <= 3 && g.ps[pid].hand.length ? 'duchy' : 'coins';
+    if (card === 'kuzuhiroi') return 'no';
     if (card === 'kumonjo') return 'top';
     if (card === 'mittei') {
       const { who, card: seen } = pr.then.data;
@@ -358,6 +437,11 @@ function answerPrompt(g, pid, strategy) {
   else if (card === 'yose') picked = cands.includes('zeni') ? ['zeni'] : [];
   else if (card === 'echigoya') picked = cands.filter(id => trashScore(g, pid, id) > 0 || id === 'kin').sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a)).slice(0, 1);
   else if (card === 'chuusen') picked = cands.sort((a, b) => (CARDS[b].coin ?? 0) - (CARDS[a].coin ?? 0)).slice(0, 1);
+  else if (card === 'nisegane') picked = cands.filter(id => id === 'kin' || id === 'gin').sort((a, b) => (CARDS[b].coin ?? 0) - (CARDS[a].coin ?? 0)).slice(0, 1);
+  else if (card === 'bushi_tomoe') picked = cands.filter(id => trashScore(g, pid, id) > 0).slice(0, 2);
+  else if (card === 'shikabane') picked = cands.filter(id => isType(id, 'ruins')).slice(0, 1);
+  else if (card === 'naya') picked = cands.filter(id => keepScore(id) <= 0);
+  else if (card === 'saikashu' || card === 'gomadan' || card === 'nezumi') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, pr.min || 1);
   else if (card === 'katanakaji') picked = cands.filter(id => trashScore(g, pid, id) > 0);
   else if (card === 'katanagari' || card === 'kobutsu' || card === 'bashaku') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
   else if (card === 'gekokujo') picked = cands.filter(id => id !== 'gekokujo').sort((a, b) => (AI[a]?.value ?? 1) - (AI[b]?.value ?? 1)).slice(0, 1);

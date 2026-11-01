@@ -61,6 +61,7 @@ export function gain(g, pid, id, to = 'discard') {
   g.supply[id] -= 1;
   const pile = id;
   if (id === 'ruins') id = g.ruinsPile.pop();
+  else if (id === 'bushi') id = g.knightsPile.pop(); // 戦国の「名のある武者」: 10人を混ぜた山の一番上
   // 交易路: 勝利点の山から初めて獲得されたら、その山の印が交易路のマットへ移る
   const tr = g.tradeRoute;
   if (tr && tr.piles.includes(pile)) {
@@ -86,7 +87,9 @@ function place(g, pid, id, to) {
   if (to === 'hand') ps.hand.push(id);
   else if (to === 'deck') ps.deck.push(id);
   else ps.discard.push(id);
-  // 獲得したときの反応（物見の塔: 手札から / 御朱印: 場から）。今の処理のあとで選ぶ
+  // 屍運び: 獲得したとき、落武者を2枚獲得する
+  if (id === 'shikabane') for (let i = 0; i < 2; i++) gain(g, pid, 'ruins');
+  // 獲得したときの反応（番所: 手札から / 御朱印: 場から）。今の処理のあとで選ぶ
   const ops = [];
   if (ps.hand.includes('bansho')) ops.push({ op: 'step', p: pid, card: 'bansho', step: 'react', data: { id, to } });
   if (g.turn && g.turn.p === pid && ps.play.includes('goshuin')) ops.push({ op: 'step', p: pid, card: 'goshuin', step: 'react', data: { id, to } });
@@ -118,9 +121,15 @@ export function trashFromHand(g, pid, ids) {
 }
 
 // 廃棄置き場に置く。廃棄されたときの効果（山城・知行・鷹狩など）があれば、今の処理のあとに実行する
+// 楽市（手札）: 自分の札が廃棄されるたびに、捨てて金を獲得してよい
 export function trashCards(g, pid, ids) {
   g.trash.push(...ids);
-  const hooks = ids.filter(id => card(id).steps?.onTrash).map(id => ({ op: 'step', p: pid, card: id, step: 'onTrash', data: {} }));
+  const market = g.ps[pid].hand.includes('rakuichi');
+  const hooks = [];
+  for (const id of ids) {
+    if (card(id).steps?.onTrash) hooks.push({ op: 'step', p: pid, card: id, step: 'onTrash', data: {} });
+    if (market) hooks.push({ op: 'step', p: pid, card: 'rakuichi', step: 'react', data: { trashed: id } });
+  }
   pushOps(g, ...hooks);
 }
 
@@ -138,6 +147,7 @@ export function allCards(g, pid) {
 
 // 今のコスト。室町の石切場（場にある間、行動札が2安い）と行商人（購入フェーズに、場の行動札1枚につき2安い）で変わる
 export function costOf(g, id) {
+  if (id === 'bushi' && g.knightsPile?.length) id = g.knightsPile[g.knightsPile.length - 1];
   let c = card(id).cost;
   const t = g.turn;
   if (t && g.ps[t.p]) {
@@ -157,6 +167,10 @@ function effectContext(g, rng, op) {
     rng,
     p: op.p,
     card: op.card,
+    // 場にある「この札」の実体（傾奇者が別の札として使われているときは 'kabukimono'）
+    self: op.self ?? op.card,
+    via: op.via ?? null,
+    viaCard: op.viaCard ?? null,
     data: op.data ?? {},
     target: op.target ?? null,
     turn: g.turn,
@@ -179,7 +193,7 @@ function effectContext(g, rng, op) {
     name: (who = e.p) => nameOf(g, who),
     // 選択を求める。ask はハンドラの最後に呼ぶこと（答えは steps[step](e, answer) に届く）
     ask: (prompt, step, data = e.data) => {
-      g.prompt = { p: prompt.p ?? e.target ?? e.p, ...prompt, then: { card: e.card, step, data, p: e.p, target: e.target } };
+      g.prompt = { p: prompt.p ?? e.target ?? e.p, ...prompt, then: { card: e.card, step, data, p: e.p, target: e.target, self: e.self } };
       normalizePrompt(g);
     },
     // 見ている札（ps.look）を、選んだ順に山札の上へ戻す（先に選んだ札ほど下）。終わったら then の命令へ
@@ -188,13 +202,13 @@ function effectContext(g, rng, op) {
     // 注意: 積んだものはスタックの一番上に乗るので、先に積んである命令（e.play・e.attack など）より先に実行される。
     //       「〜のあとで」にしたいときは、later を先に呼んでから play / attack を呼ぶ
     later: (...ops) => pushOps(g, ...ops),
-    step: (step, data = e.data) => pushOps(g, { op: 'step', p: e.p, card: e.card, step, data, target: e.target }),
+    step: (step, data = e.data) => pushOps(g, { op: 'step', p: e.p, card: e.card, self: e.self, step, data, target: e.target }),
     // 他の全員に攻撃する（手番順）。対象ごとに steps[step] が e.target 付きで呼ばれる
     attack: (step, data = e.data) =>
-      pushOps(g, ...others(g, e.p).map(t => ({ op: 'attack', p: e.p, card: e.card, step, data, target: t }))),
+      pushOps(g, ...others(g, e.p).map(t => ({ op: 'attack', p: e.p, card: e.card, self: e.self, step, data, target: t }))),
     // 札を times 回使う。via は御前などで使ったときの印（持続札なら御前も一緒に場に残る）
     play: (id, times = 1, via = null) => {
-      for (let i = 0; i < times; i++) pushOps(g, { op: 'resolve', p: e.p, card: id, via: via?.token ?? null, viaCard: via?.card ?? null });
+      for (let i = 0; i < times; i++) pushOps(g, { op: 'resolve', p: e.p, card: id, via: via?.token ?? null, viaCard: via?.card ?? null, ...(via?.self ? { self: via.self } : {}) });
     },
     // 持続札の記録（使った手番の効果から、次の手番へ情報や札を渡す）
     durEntry: () => g.ps[e.p].durNext[e.data.dur],
@@ -237,10 +251,24 @@ function exec(g, rng, op) {
   if (opHandlers[op.op]) return opHandlers[op.op](g, rng, op);
   if (op.op === 'resolve') {
     const c = card(op.card);
+    // 攻撃札を使ったとき、先に起きること: 悪童（場）を廃棄して雑賀衆を得るか、ほかの人の物乞い（手札）
+    if (c.types.includes('attack') && !op.pre) {
+      const pre = [];
+      const ps = g.ps[op.p];
+      const self = op.self ?? op.card;
+      const urchins = ps.play.filter(x => x === 'akudou').length - (self === 'akudou' ? 1 : 0);
+      if (urchins > 0 && g.supply.saikashu > 0) pre.push({ op: 'step', p: op.p, card: 'akudou', step: 'react', data: {} });
+      for (const o of others(g, op.p)) if (g.ps[o].hand.includes('monogoi')) pre.push({ op: 'step', p: o, card: 'monogoi', step: 'react', data: {} });
+      if (pre.length) {
+        g.stack.push({ ...op, pre: true });
+        pushOps(g, ...pre);
+        return;
+      }
+    }
     const e = effectContext(g, rng, op);
     if (c.next) {
       const ps = g.ps[op.p];
-      ps.durNext.push({ id: op.card, data: {}, held: [], via: op.via ?? null, viaCard: op.viaCard ?? null });
+      ps.durNext.push({ id: op.card, physical: op.self ?? null, data: {}, held: [], via: op.via ?? null, viaCard: op.viaCard ?? null });
       e.data = { dur: ps.durNext.length - 1 };
     }
     c.play?.(e);
@@ -302,8 +330,9 @@ export function candidates(g, pr) {
 
 // 「札の名前を言う」ときの候補: このゲームに出てくる札（供給の札と、誰かが持っている札）
 export function nameableCards(g) {
-  const ids = new Set(Object.keys(g.supply).filter(id => id !== 'ruins'));
+  const ids = new Set(Object.keys(g.supply).filter(id => id !== 'ruins' && id !== 'bushi'));
   for (const id of g.ruinsPile ?? []) ids.add(id);
+  for (const id of g.knightsPile ?? []) ids.add(id);
   for (const p of g.players) for (const id of allCards(g, p)) ids.add(id);
   return [...ids].sort((a, b) => costOf(g, a) - costOf(g, b));
 }
@@ -311,7 +340,7 @@ export function nameableCards(g) {
 function resume(g, answer) {
   const { then } = g.prompt;
   g.prompt = null;
-  g.stack.push({ op: 'step', p: then.p, card: then.card, step: then.step, data: then.data, target: then.target, answer });
+  g.stack.push({ op: 'step', p: then.p, card: then.card, self: then.self, step: then.step, data: then.data, target: then.target, answer });
 }
 
 export function answer(g, rng, pid, ans) {
