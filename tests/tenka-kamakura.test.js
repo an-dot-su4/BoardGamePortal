@@ -147,3 +147,136 @@ test('平安＋鎌倉で CPU 同士が何百試合しても壊れない', () => 
     }
   }
 });
+
+test('鎌倉は本家の海辺（初版）と同じ26種', () => {
+  assert.equal(T.KINGDOM.filter(c => c.set === 'kamakura').length, 26);
+});
+
+test('関所: 自分を廃棄して山に関所。その山を買うと祟り', () => {
+  const { g, p } = fresh(2, ['sekisho', 'kin']);
+  play(g, p, 'sekisho');
+  choose(g, p, 'gin');
+  assert.equal(g.embargo.gin, 1);
+  assert.ok(g.trash.includes('sekisho'));
+  T.act(g, p, { type: 'treasures' });
+  T.act(g, p, { type: 'buy', card: 'gin' });
+  assert.ok(g.ps[p].discard.includes('tatari'));
+});
+
+test('隠れ里: マットに置いて、あとでまとめて手札に', () => {
+  const { g, p } = fresh(2, ['kakurezato', 'kakurezato']);
+  g.ps[p].deck = ['kin', 'gin'];
+  play(g, p, 'kakurezato');
+  choose(g, p, 'set');
+  assert.deepEqual(g.ps[p].mats.native, ['gin']);
+  assert.deepEqual(T.view(g, p).myNative, ['gin']);
+  assert.deepEqual(T.view(g, g.players[1]).myNative, [], 'マットの中身は本人だけ');
+  play(g, p, 'kakurezato');
+  choose(g, p, 'take');
+  assert.ok(g.ps[p].hand.includes('gin'));
+});
+
+test('海女: 一番下を一番上に', () => {
+  const { g, p } = fresh(2, ['ama']);
+  g.ps[p].deck = ['kin', 'ta', 'zeni', 'gin'];
+  play(g, p, 'ama');
+  choose(g, p, 'top');
+  assert.equal(g.ps[p].deck.at(-1), 'kin');
+});
+
+test('使節: 2枚戻して、相手に1枚ずつ', () => {
+  const { g, p, o } = fresh(2, ['shisetsu', 'ta', 'ta', 'zeni']);
+  const before = g.supply.ta;
+  play(g, p, 'shisetsu');
+  choose(g, p, ['ta']);
+  choose(g, p, 2);
+  assert.equal(g.supply.ta, before + 2 - 1);
+  assert.ok(g.ps[o].discard.includes('ta'));
+});
+
+test('抜け荷: 右隣が前の手番に獲得した札', () => {
+  const { g, p, o } = fresh(2, ['nukeni']);
+  g.ps[o].lastGained = ['kin', 'kuni'];
+  play(g, p, 'nukeni');
+  assert.deepEqual(T.view(g, p).prompt.cands, ['kin']);
+  choose(g, p, 'kin');
+  assert.ok(g.ps[p].discard.includes('kin'));
+});
+
+test('隠岐の島: マットの札も得点に入る', () => {
+  const { g, p } = fresh(2, ['oki', 'kuni']);
+  const before = T.score(g, p);
+  play(g, p, 'oki');
+  choose(g, p, ['kuni']);
+  assert.deepEqual(g.ps[p].mats.island.sort(), ['kuni', 'oki']);
+  assert.equal(T.score(g, p), before);
+});
+
+test('水先案内: 5枚を捨てるか、順番を決めて戻す', () => {
+  const { g, p } = fresh(2, ['mizusaki']);
+  g.ps[p].deck = ['zeni', 'ta', 'gin', 'kin', 'ta', 'zeni'];
+  play(g, p, 'mizusaki');
+  choose(g, p, 'discard');
+  assert.equal(g.ps[p].deck.length, 1);
+  assert.equal(g.ps[p].discard.length, 5);
+});
+
+test('倭寇: 財宝を沈めると銭が増え、銭の数だけ+文', () => {
+  const { g, p, o } = fresh(2, ['wakou', 'wakou']);
+  g.turn.actions = 2;
+  g.ps[o].deck = ['ta', 'kin', 'zeni'];
+  play(g, p, 'wakou');
+  choose(g, p, 'raid');
+  choose(g, p, 'kin');
+  assert.equal(g.ps[p].mats.pirate, 1);
+  play(g, p, 'wakou');
+  choose(g, p, 'cash');
+  assert.equal(g.turn.coins, 1);
+});
+
+test('寄せ物拾い・磯女・埋蔵金の図・渡海者', () => {
+  let { g, p, o } = fresh(2, ['yosemono', 'kin']);
+  play(g, p, 'yosemono');
+  choose(g, p, ['kin']);
+  assert.deepEqual([g.turn.coins, g.turn.buys], [6, 2]);
+  ({ g, p, o } = fresh(2, ['isoonna']));
+  g.ps[o].deck = ['gin', 'kin'];
+  play(g, p, 'isoonna');
+  assert.equal(g.ps[o].deck.at(-1), 'tatari');
+  assert.ok(g.ps[o].discard.includes('kin'));
+  ({ g, p } = fresh(2, ['maizou', 'maizou']));
+  play(g, p, 'maizou');
+  assert.deepEqual(g.ps[p].deck.slice(-4), ['kin', 'kin', 'kin', 'kin']);
+  ({ g, p } = fresh(2, ['tokaisha', 'kuni']));
+  play(g, p, 'tokaisha');
+  choose(g, p, 'yes');
+  assert.ok(g.ps[p].hand.includes('kin'));
+});
+
+test('早馬: 3枚引いて、もう一度自分の手番（続けては1回だけ）', () => {
+  const { g, p } = fresh(2, ['hayauma', 'hayauma']);
+  g.turn.actions = 1;
+  play(g, p, 'hayauma');
+  T.act(g, p, { type: 'end' }, rng());
+  T.act(g, p, { type: 'end' }, rng());
+  assert.equal(g.turn.p, p, '追加の手番');
+  assert.ok(g.turn.extra);
+  assert.equal(g.ps[p].hand.length, 3);
+  const turns = g.ps[p].turns;
+  g.ps[p].hand.push('hayauma');
+  play(g, p, 'hayauma');
+  T.act(g, p, { type: 'end' }, rng());
+  T.act(g, p, { type: 'end' }, rng());
+  assert.notEqual(g.turn.p, p, '3回続けては行えない');
+  assert.equal(g.ps[p].turns, turns, '追加の手番は手番数に数えない');
+});
+
+test('公文所: 勝利点を買わなければ山札の上に', () => {
+  const { g, p } = fresh(2, ['kumonjo']);
+  play(g, p, 'kumonjo');
+  T.act(g, p, { type: 'end' }, rng());
+  T.act(g, p, { type: 'end' }, rng());
+  assert.equal(g.prompt.p, p);
+  choose(g, p, 'top');
+  assert.ok(g.ps[p].hand.includes('kumonjo'), '次の手札に入る');
+});

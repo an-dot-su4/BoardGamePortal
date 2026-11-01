@@ -206,7 +206,7 @@ test('BAN: 選ばれず、おすすめセットの穴は埋まり、足りなけ
   assert.ok(!k.includes('jujutsu'));
   for (const id of ['kekkai', 'tera', 'teien', 'gozen']) assert.ok(k.includes(id), 'おすすめの残りはそのまま');
   const g = T.setup(makePlayers(2), seededRng(1), { preset: 'heian-curse', bans: ['jujutsu'] });
-  assert.equal(g.supply.tatari, undefined, '祟りを配る札がなければ祟りの山は無い');
+  assert.equal(g.supply.tatari, 10, '祟りの山は本家と同じく常に置かれる（2人なら10枚）');
 
   // 平安だけで、使える札が9種になるまで BAN すると開始できない
   const heian = T.KINGDOM.filter(c => c.set === 'heian').map(c => c.id);

@@ -61,6 +61,7 @@ export function gain(g, pid, id, to = 'discard') {
   g.supply[id] -= 1;
   if (id === 'ruins') id = g.ruinsPile.pop();
   const ps = g.ps[pid];
+  if (g.turn && g.turn.p === pid) (g.turn.gained ??= []).push(id);
   if (to === 'hand') ps.hand.push(id);
   else if (to === 'deck') ps.deck.push(id);
   else ps.discard.push(id);
@@ -87,7 +88,8 @@ export function discardFromHand(g, pid, ids) {
 export function allCards(g, pid) {
   const ps = g.ps[pid];
   const held = [...(ps.durNext ?? []), ...(ps.durEffects ?? [])].flatMap(en => en.held);
-  return [...ps.deck, ...ps.hand, ...ps.discard, ...ps.play, ...ps.aside, ...(ps.dur ?? []), ...(ps.look ?? []), ...held];
+  const mats = Object.values(ps.mats ?? {}).filter(Array.isArray).flat();
+  return [...ps.deck, ...ps.hand, ...ps.discard, ...ps.play, ...ps.aside, ...(ps.dur ?? []), ...(ps.look ?? []), ...held, ...mats];
 }
 
 export function costOf(g, id) {
@@ -167,7 +169,14 @@ export function run(g, rng) {
   }
 }
 
+// ルール側（logic.js）が独自の命令を登録する口（片付けなど、選択をはさむ進行のため）
+const opHandlers = {};
+export function setOpHandler(name, fn) {
+  opHandlers[name] = fn;
+}
+
 function exec(g, rng, op) {
+  if (opHandlers[op.op]) return opHandlers[op.op](g, rng, op);
   if (op.op === 'resolve') {
     const c = card(op.card);
     const e = effectContext(g, rng, op);
@@ -223,7 +232,7 @@ export function candidates(g, pr) {
   if (pr.kind === 'supply') {
     return Object.keys(g.supply).filter(
       id =>
-        g.supply[id] > 0 &&
+        (g.supply[id] > 0 || pr.allPiles) &&
         !card(id).notSupply &&
         (pr.maxCost === undefined || costOf(g, id) <= pr.maxCost) &&
         (pr.exactCost === undefined || costOf(g, id) === pr.exactCost) &&

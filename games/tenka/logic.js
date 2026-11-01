@@ -5,7 +5,7 @@
 import { GameError, shuffle } from '../../js/util.js';
 import { CARDS, KINGDOM, PRESETS, SETS } from './cards/index.js';
 import {
-  allCards, answer, candidates, card, draw, gain, HAND_SIZE, isType, log, nameOf, pushOps, run, take,
+  allCards, answer, candidates, card, draw, gain, HAND_SIZE, isType, log, nameOf, pushOps, run, setOpHandler, take,
 } from './engine.js';
 
 export { bot } from './bot.js';
@@ -72,7 +72,8 @@ export function setup(players, rng = Math.random, options = {}) {
     kuni: victoryPile,
   };
   // 祟りは、祟りを配る札があるときだけ置く
-  if (kingdom.some(id => card(id).giver?.includes('tatari'))) supply.tatari = 10 * (n - 1);
+  // 祟りの山は本家と同じく常に供給に置く（山が尽きれば終了条件にも数える）
+  supply.tatari = 10 * (n - 1);
   // 戦国: 戦利品を出す札があれば戦利品の山、落武者を配る札があれば落武者の山（4種を混ぜる）
   if (kingdom.some(id => card(id).spoils)) supply.senrihin = 15;
   let ruinsPile = [];
@@ -97,6 +98,7 @@ export function setup(players, rng = Math.random, options = {}) {
     kingdom,
     supply,
     ruinsPile,
+    embargo: {}, // 関所の札が置かれた山: { 山のID: 枚数 }
     trash: [],
     ps: {},
     stack: [],
@@ -108,19 +110,19 @@ export function setup(players, rng = Math.random, options = {}) {
     log: ['⛩️ 天下札、開始！ 王国: ' + kingdom.map(id => card(id).name).join('・')],
   };
   for (const pid of ids) {
-    g.ps[pid] = { deck: shuffle([...Array(7).fill('zeni'), ...Array(3).fill('ta')], rng), hand: [], discard: [], play: [], aside: [], dur: [], durNext: [], durEffects: [], look: [], fame: 0, coffers: kingdom.reduce((a, id) => Math.max(a, card(id).startCoffers ?? 0), 0), turns: 0 };
+    g.ps[pid] = { deck: shuffle([...Array(7).fill('zeni'), ...Array(3).fill('ta')], rng), hand: [], discard: [], play: [], aside: [], dur: [], durNext: [], durEffects: [], look: [], fame: 0, mats: { native: [], island: [], pirate: 0 }, lastGained: [], coffers: kingdom.reduce((a, id) => Math.max(a, card(id).startCoffers ?? 0), 0), turns: 0 };
     draw(g, rng, pid, HAND_SIZE);
   }
   startTurn(g, ids[Math.floor(rng() * n)], rng);
   return g;
 }
 
-function startTurn(g, pid, rng) {
+function startTurn(g, pid, rng, extra = false) {
   g.turnNo += 1;
-  g.turn = { p: pid, phase: 'action', actions: 1, buys: 1, coins: 0, bought: [] };
+  g.turn = { p: pid, phase: 'action', actions: 1, buys: 1, coins: 0, bought: [], gained: [], extra };
   const ps = g.ps[pid];
-  ps.turns += 1;
-  log(g, `── ${nameOf(g, pid)} の手番 ──`);
+  if (!extra) ps.turns += 1; // 早馬の追加手番は、同点のときの手番数に数えない
+  log(g, extra ? `── ${nameOf(g, pid)} の追加の手番（早馬） ──` : `── ${nameOf(g, pid)} の手番 ──`);
   // 前の手番から残っている持続札: 場に戻して、次の手番の効果を使う
   ps.play.push(...ps.dur);
   ps.dur = [];
@@ -130,8 +132,19 @@ function startTurn(g, pid, rng) {
   run(g, rng);
 }
 
-// 片付け: 場と手札を捨てて5枚引き、次の人へ
+// 片付け: 場の札の「捨てるとき」の選択（公文所など）をしてから、場と手札を捨てて5枚引き、次の人へ
 function cleanup(g, rng) {
+  const pid = g.turn.p;
+  const ps = g.ps[pid];
+  g.turn.phase = 'cleanup';
+  const hooks = ps.play.filter(id => card(id).steps?.onCleanup).map(id => ({ op: 'step', p: pid, card: id, step: 'onCleanup', data: {} }));
+  pushOps(g, ...hooks, { op: 'cleanup' });
+  run(g, rng);
+}
+
+setOpHandler('cleanup', (g, rng) => finishCleanup(g, rng));
+
+function finishCleanup(g, rng) {
   const pid = g.turn.p;
   const ps = g.ps[pid];
   // この手番に使った持続札は捨てずに残す（御前で使った持続札は、御前も一緒に残る）
@@ -153,8 +166,12 @@ function cleanup(g, rng) {
   ps.discard.push(...ps.play, ...ps.hand);
   ps.play = [];
   ps.hand = [];
-  draw(g, rng, pid, HAND_SIZE);
+  ps.lastGained = g.turn.gained ?? [];
+  // 早馬: 手札は3枚だけ引き、もう一度自分の手番（2回続けては不可）
+  const outpost = g.turn.outpost && !g.turn.extra;
+  draw(g, rng, pid, outpost ? 3 : HAND_SIZE);
   if (isGameOver(g)) return finish(g);
+  if (outpost) return startTurn(g, pid, rng, true);
   const next = g.players[(g.players.indexOf(pid) + 1) % g.players.length];
   startTurn(g, next, rng);
 }
@@ -271,6 +288,7 @@ export function act(g, pid, action, rng = Math.random) {
     if (!Number.isInteger(over) || over < 0 || (over > 0 && !card(id).steps?.overpay)) throw new GameError('多く払う額が正しくありません');
     if (t.coins < card(id).cost + over) throw new GameError(`お金が足りません（${card(id).cost + over}文必要）`);
     if (card(id).canBuy?.(g, pid) === false) throw new GameError(`${card(id).name}は今は買えません（場に銅銭があるなど）`);
+    if (t.banned?.includes(id)) throw new GameError(`${card(id).name}はこの手番には買えません（密輸の取り締まり）`);
     t.coins -= card(id).cost + over;
     t.buys -= 1;
     gain(g, pid, id);
@@ -285,6 +303,8 @@ export function act(g, pid, action, rng = Math.random) {
       log: text => log(g, text),
     };
     for (const c of g.ps[pid].play.slice()) card(c).whileInPlay?.onBuy?.(x, id);
+    // 関所: その山に置かれた関所の数だけ祟りを獲得
+    for (let i = 0; i < (g.embargo[id] ?? 0); i++) if (gain(g, pid, 'tatari')) log(g, `${nameOf(g, pid)}: 関所で祟りを受けた`);
     // 多く払った効果（選択が要るものもあるので命令として実行）
     if (over > 0) {
       pushOps(g, { op: 'step', p: pid, card: id, step: 'overpay', data: { n: over } });
@@ -321,6 +341,8 @@ export function view(g, pid) {
     trashCount: g.trash.length,
     trashTop: g.trash[g.trash.length - 1] ?? null,
     ruinsTop: g.ruinsPile?.[g.ruinsPile.length - 1] ?? null,
+    embargo: g.embargo ?? {},
+    myNative: seated ? (g.ps[pid].mats?.native ?? []) : [],
     hand: seated ? g.ps[pid].hand.slice().sort(handOrder) : [],
     prompt: myPrompt,
     waitingFor: pr && pr.p !== pid ? pr.p : null,
@@ -341,6 +363,9 @@ export function view(g, pid) {
         dur: ps.dur,
         fame: ps.fame ?? 0,
         coffers: ps.coffers ?? 0,
+        island: ps.mats?.island ?? [],
+        nativeCount: ps.mats?.native?.length ?? 0,
+        pirate: ps.mats?.pirate ?? 0,
         total: allCards(g, p).length,
         vp: g.phase === 'over' ? score(g, p) : null,
       };

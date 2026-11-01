@@ -130,6 +130,7 @@ export function createUI(root, api) {
       return cardEl(c, {
         size: 'mini',
         count: n,
+        badge: view.embargo?.[id] ? `関${view.embargo[id]}` : null,
         dim: n === 0,
         selected: affordable || promptPick,
         onclick: () => {
@@ -160,6 +161,13 @@ export function createUI(root, api) {
           h('div', { class: 'name' }, p.bot ? '🤖 ' : '', p.name),
           h('div', { class: 'small' }, `手札${p.hand}・山札${p.deck}・捨て札${p.discard}`),
           h('div', { class: 'small muted' }, `全${p.total}枚`, p.fame ? `・名声${p.fame}` : '', p.coffers ? `・蓄え${p.coffers}` : '', p.vp !== null ? `・${p.vp}点` : ''),
+          p.island.length || p.nativeCount || p.pirate
+            ? h('div', { class: 'small muted' },
+                p.island.length ? `隠岐の島: ${p.island.map(id => CARDS[id].name).join('・')} ` : '',
+                p.nativeCount ? `隠れ里: ${p.nativeCount}枚 ` : '',
+                p.pirate ? `倭寇の銭: ${p.pirate}` : '',
+              )
+            : null,
           turnP && p.play.length
             ? h('div', { class: 'tk-play' }, p.play.map(id => h('span', { class: `tk-pill tk-pill-${pillType(id)}` }, CARDS[id].name)))
             : null,
@@ -210,6 +218,7 @@ export function createUI(root, api) {
       : null;
     return h('section', {},
       h('div', { class: 'tk-row-title small' }, `あなたの手札（${view.hand.length}枚）`, h('span', { class: 'muted' }, `山札${me.deck}・捨て札${me.discard}・全${me.total}枚`)),
+      view.myNative.length ? h('div', { class: 'small' }, `隠れ里のマット（自分だけ見える）: ${view.myNative.map(id => CARDS[id].name).join('・')}`) : null,
       actions,
       h('div', { class: 'tk-hand' }, cards),
     );

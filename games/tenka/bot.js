@@ -40,6 +40,20 @@ const AI = {
   mihari: { chain: true, value: 3 },
   gokenin: { chain: true, value: 5 },
   monzen: { chain: true, value: 6 },
+  sekisho: { value: 2 },
+  kakurezato: { chain: true, value: 2 },
+  ama: { chain: true, value: 3 },
+  shisetsu: { value: 4 },
+  nukeni: { value: 3 },
+  oki: { value: 3 },
+  mizusaki: { value: 4 },
+  wakou: { value: 4 },
+  yosemono: { value: 4 },
+  isoonna: { value: 7 },
+  maizou: { value: 3 },
+  tokaisha: { value: 6 },
+  hayauma: { value: 6 },
+  kumonjo: { chain: true, value: 6 },
   akutou: { value: 5 },
   sousen: { value: 6 },
   toimaru: { value: 8 },
@@ -132,6 +146,8 @@ function count(g, pid, id) {
 function useful(g, pid, id) {
   const hand = g.ps[pid].hand;
   if (id === 'kura') return hand.some(c => isType(c, 'victory') || isType(c, 'curse'));
+  if (id === 'maizou') return hand.filter(c => c === 'maizou').length >= 2;
+  if (id === 'shisetsu' || id === 'yosemono' || id === 'oki') return hand.length > 1;
   if (id === 'tera') return hand.some(c => trashScore(g, pid, c) > 0);
   if (id === 'kanekashi') return hand.includes('zeni');
   if (id === 'kanayama') return hand.includes('zeni') || hand.includes('gin');
@@ -239,6 +255,7 @@ function answerPrompt(g, pid, strategy) {
   const { card, step } = pr.then;
   const cands = candidates(g, pr);
 
+  if (pr.kind === 'supply' && card === 'sekisho') return cands.includes('gosho') ? 'gosho' : cands.includes('kuni') ? 'kuni' : cands[0];
   if (pr.kind === 'supply') return bestGain(g, pid, pr, strategy);
   if (card === 'jisha' && step === 'otherTrash') return cands.filter(id => trashScore(g, pid, id) > 0).slice(0, 1);
   if (card === 'kuramoto' && step === 'swap') {
@@ -253,6 +270,8 @@ function answerPrompt(g, pid, strategy) {
     return list.sort((a, b) => (card === 'machiisha' ? trashScore(g, pid, b) - trashScore(g, pid, a) : 0) || keepScore(a) - keepScore(b))[0];
   }
   if (pr.kind === 'list' && card === '_order') return cands.sort((a, b) => keepScore(a) - keepScore(b))[0]; // 要らない札を下に
+  if (pr.kind === 'list' && card === 'nukeni') return cands.sort((a, b) => cost(b) - cost(a))[0];
+  if (pr.kind === 'list' && card === 'wakou') return cands.sort((a, b) => (CARDS[b].coin ?? 0) - (CARDS[a].coin ?? 0))[0];
   if (pr.kind === 'list' && card === 'tozoku') return cands.sort((a, b) => (CARDS[b].coin ?? 0) - (CARDS[a].coin ?? 0))[0];
   if (pr.kind === 'list' && card === 'bantou') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0];
   if (pr.kind === 'list' && card === 'kabuki') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0]; // 相手の一番良い札を捨てさせる
@@ -269,6 +288,13 @@ function answerPrompt(g, pid, strategy) {
     if (card === 'ikkou') return 'yes';
     if (card === 'takagari') return 'shouen';
     if (card === 'sessho') return 'no';
+    if (card === 'kakurezato') return g.ps[pid].mats.native.length >= 3 ? 'take' : 'set';
+    if (card === 'ama') return keepScore(g.ps[pid].deck[0]) >= 2 ? 'top' : 'stay';
+    if (card === 'shisetsu') return pr.options[pr.options.length - 1].value;
+    if (card === 'mizusaki') return g.ps[pid].look.filter(id => keepScore(id) <= 1).length > 2 ? 'discard' : 'back';
+    if (card === 'wakou') return g.ps[pid].mats.pirate >= 2 ? 'cash' : 'raid';
+    if (card === 'tokaisha') return 'yes';
+    if (card === 'kumonjo') return 'top';
     if (card === 'mittei') {
       const { who, card: seen } = pr.then.data;
       const good = keepScore(seen) >= 2 || isType(seen, 'action');
@@ -299,6 +325,8 @@ function answerPrompt(g, pid, strategy) {
   else if (card === 'tera') picked = pickBy(id => trashScore(g, pid, id), id => trashScore(g, pid, id) > 0);
   else if (card === 'kanekashi') picked = cands.slice(0, 1);
   else if (card === 'gozen' || card === 'shichifuku') picked = [chooseActionFrom(cands.filter(id => id !== 'gozen' && id !== 'shichifuku')) ?? cands[0]].slice(0, 1);
+  else if (card === 'shisetsu' || card === 'oki') picked = cands.sort((a, b) => keepScore(a) - keepScore(b)).slice(0, 1);
+  else if (card === 'yosemono') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || (b === 'kuni' && g.supply.kuni <= 2 ? -1 : 0) || keepScore(a) - keepScore(b)).slice(0, 1);
   else if (card === 'daikan') picked = cands.includes('gin') ? ['gin'] : cands.includes('zeni') ? ['zeni'] : [];
   else if (card === 'ishiya') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
   else if (card === 'yose') picked = cands.includes('zeni') ? ['zeni'] : [];

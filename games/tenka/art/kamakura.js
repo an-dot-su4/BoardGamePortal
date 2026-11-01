@@ -163,4 +163,165 @@ export const KAMAKURA_ART = {
     <rect y="100" width="${W}" height="30" fill="#d8c39a"/><path d="M80 130 L92 100 h16 L120 130Z" fill="#e8dcbc"/>
     ${[[6, '#2c3e66'], [150, '#3d7a4a']].map(([x, c]) => `<rect x="${x}" y="70" width="44" height="30" fill="#e6d3a0" stroke="#8a6a3a"/><path d="M${x - 2} 70 h48 l-4 -10 h-40z" fill="#4a3a2a"/><rect x="${x + 6}" y="76" width="32" height="10" fill="${c}"/><circle cx="${x + 22}" cy="94" r="5" fill="#e8603a"/>`).join('')}
     <g>${[[30, 104], [170, 106], [100, 112]].map(([x, y], i) => `<circle cx="${x}" cy="${y - 6}" r="3.5" fill="#f3d7b6"/><path d="M${x - 4} ${y + 10} l2 -12 h4 l2 12z" fill="${['#7a4a8a', '#2c3e66', '#8e2418'][i]}"/>`).join('')}</g>`,
+
+  // 関所: 街道をふさぐ柵と門、札
+  sekisho: () => `
+    <defs>${skyGradient('sekisho-sky', '#9fb8d0', '#f0e8d8')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#sekisho-sky)"/>
+    <path d="M0 80 Q100 66 200 80 V130 H0Z" fill="#8fb07a"/>
+    <path d="M70 130 L90 84 h20 L130 130Z" fill="#e4cf9c"/>
+    <g fill="#5c3b22">${Array.from({ length: 8 }, (_, i) => `<rect x="${6 + i * 8}" y="70" width="5" height="34"/><rect x="${138 + i * 8}" y="70" width="5" height="34"/>`).join('')}</g>
+    <path d="M70 46 h60 v8 h-60z" fill="#3b2a1a"/><path d="M64 46 L100 32 L136 46Z" fill="#2b2b38"/>
+    <rect x="74" y="54" width="6" height="50" fill="#5c3b22"/><rect x="120" y="54" width="6" height="50" fill="#5c3b22"/>
+    <path d="M74 80 H126" stroke="#2c3e66" stroke-width="5"/>
+    <rect x="148" y="34" width="22" height="30" fill="#fbf6e6" stroke="#5c3b22"/><text x="159" y="54" text-anchor="middle" font-family="serif" font-size="13" font-weight="700" fill="#b8322a">関</text>`,
+
+  // 隠れ里: 山あいに隠れた家と、伏せた札
+  kakurezato: () => `
+    <defs>${skyGradient('kakurezato-sky', '#7a9ab8', '#d8e4e8')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#kakurezato-sky)"/>
+    <path d="M0 110 L40 30 L80 90 L120 20 L160 80 L200 40 V130 H0Z" fill="#3d5a4a"/>
+    <path d="M60 130 L100 70 L140 130Z" fill="#4e7a5a"/>
+    <path d="M86 98 l14 -12 l14 12 v14 h-28z" fill="#8a6a3a"/><path d="M82 100 l18 -16 l18 16" stroke="#5c4030" stroke-width="3" fill="none"/>
+    <g fill="#fff" opacity=".5">${[50, 70].map(y => `<rect x="0" y="${y}" width="${W}" height="6"/>`).join('')}</g>
+    ${[[150, 104], [160, 100], [170, 104]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="16" height="22" rx="2" fill="#34506b" stroke="#fff" stroke-width="1" transform="rotate(${(i - 1) * 10} ${x + 8} ${y + 11})"/>`).join('')}`,
+
+  // 海女: 海に潜って貝を探す海女
+  ama: () => `
+    <defs><linearGradient id="ama-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a9ac8"/><stop offset="1" stop-color="#14304e"/></linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#ama-g)"/>
+    <path d="M0 14 q25 -8 50 0 t50 0 t50 0 t50 0" stroke="#e8f1ff" stroke-width="2" fill="none"/>
+    <g fill="#e8f1ff" opacity=".6">${[[60, 40], [66, 30], [70, 20]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2"/>`).join('')}</g>
+    <path d="M60 50 C70 60 90 70 110 80" stroke="#f3d7b6" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <circle cx="56" cy="46" r="7" fill="#f3d7b6"/><path d="M50 42 h12" stroke="#fff" stroke-width="3"/>
+    <path d="M70 58 l10 14 l14 4" fill="#fbf6e6"/><path d="M110 80 L124 70 M110 80 L126 88" stroke="#f3d7b6" stroke-width="4" stroke-linecap="round"/>
+    <path d="M0 116 Q100 104 200 116 V130 H0Z" fill="#c9b48a"/>
+    ${[[130, 112], [150, 116], [170, 110]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="8" ry="5" fill="#8a7a6a" stroke="#5c4a3a"/>`).join('')}
+    <circle cx="150" cy="112" r="2.5" fill="#fff"/>`,
+
+  // 使節: 返書の文箱を捧げ持つ使者
+  shisetsu: () => `
+    ${washi('#e6d8bc', 'shisetsu')}
+    <rect y="100" width="${W}" height="30" fill="#a07a4f"/>
+    <path d="M70 102 Q100 50 130 102Z" fill="#2c3e66"/>
+    <circle cx="100" cy="54" r="10" fill="#f3d7b6"/><path d="M91 50 h18 v-6 h-18z" fill="#1d1d1d"/>
+    <rect x="80" y="70" width="40" height="14" rx="3" fill="#1d1d1d" stroke="#e6c46a"/><path d="M80 77 h40" stroke="#b8322a" stroke-width="3"/>
+    ${[[30, 96], [170, 96]].map(([x, y]) => `<rect x="${x - 12}" y="${y - 8}" width="24" height="10" fill="#d8c08a" stroke="#8a6a3a"/>`).join('')}
+    <path d="M150 30 l12 -10 l12 10 v16 h-24z" fill="#e6d6b0" stroke="#5c4030"/><path d="M28 30 h24 v16 h-24z" fill="#e6d6b0" stroke="#5c4030"/>
+    <path d="M52 38 L148 38" stroke="#8a6a3a" stroke-dasharray="4 4"/>`,
+
+  // 抜け荷: 夜の浜で荷を受け渡す小舟
+  nukeni: () => `
+    <defs>${skyGradient('nukeni-sky', '#141a30', '#3a4a6a')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#nukeni-sky)"/>
+    <circle cx="40" cy="26" r="10" fill="#f6eec8"/>
+    <path d="M0 90 q25 -8 50 0 t50 0 t50 0 t50 0 V130 H0Z" fill="#1f3d6e"/>
+    <path d="M120 130 L140 96 L200 92 V130Z" fill="#3b3028"/>
+    <path d="M40 92 h64 l-8 10 h-48z" fill="#2b2014"/><path d="M72 92 V66" stroke="#2b2014" stroke-width="2"/>
+    <ellipse cx="72" cy="88" rx="12" ry="7" fill="#8a6a3a"/>
+    <circle cx="150" cy="80" r="5" fill="#0a0a10"/><path d="M150 86 l-4 12 M150 86 l6 12" stroke="#0a0a10" stroke-width="4"/>
+    <ellipse cx="164" cy="84" rx="9" ry="6" fill="#6b4a2b"/>
+    <g fill="#f2a33a">${[[100, 80]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="4" ry="5"/>`).join('')}</g>`,
+
+  // 隠岐の島: 海に浮かぶ島と、配流の小屋
+  oki: () => `
+    <defs>${skyGradient('oki-sky', '#c0d8e8', '#f2ead6')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#oki-sky)"/>
+    <path d="M0 80 q25 -6 50 0 t50 0 t50 0 t50 0 V130 H0Z" fill="#3c6aa0"/>
+    <path d="M40 84 Q70 30 110 40 Q150 30 170 84Z" fill="#4e7a4a"/>
+    <path d="M60 84 Q90 54 120 60 Q150 54 160 84Z" fill="#6f9a5a"/>
+    <path d="M94 66 l10 -8 l10 8 v10 h-20z" fill="#8a6a3a"/>
+    <g><rect x="126" y="52" width="3" height="14" fill="#5a3a1a"/><ellipse cx="128" cy="50" rx="10" ry="5" fill="#2f6b3f"/></g>
+    <path d="M10 100 q20 -6 40 0 M150 106 q20 -6 40 0" stroke="#e8f1ff" stroke-width="2" fill="none"/>`,
+
+  // 水先案内: 舳先から海路を指し示す案内人
+  mizusaki: () => `
+    <defs>${skyGradient('mizusaki-sky', '#f2c08a', '#f6eedc')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#mizusaki-sky)"/>
+    <path d="M0 84 q25 -8 50 0 t50 0 t50 0 t50 0 V130 H0Z" fill="#2f5a99"/>
+    <path d="M20 88 L150 88 L180 70 L170 100 L30 104Z" fill="#5c3b22"/>
+    <circle cx="150" cy="56" r="7" fill="#f3d7b6"/><path d="M144 62 l2 24 h10 l2 -24z" fill="#2c3e66"/>
+    <path d="M158 66 L184 50" stroke="#f3d7b6" stroke-width="4" stroke-linecap="round"/>
+    <g stroke="#ffe39a" stroke-width="2" stroke-dasharray="4 4" fill="none"><path d="M186 48 Q170 20 120 26 T40 20"/></g>
+    <g fill="#ffe39a">${[[60, 20], [100, 26], [140, 22]].map(([x, y]) => `<path d="M${x} ${y - 4} l1.5 3 l3 1 l-3 1 l-1.5 3 l-1.5 -3 l-3 -1 l3 -1z"/>`).join('')}</g>`,
+
+  // 倭寇: 八幡の旗を掲げた海賊船
+  wakou: () => `
+    <defs>${skyGradient('wakou-sky', '#5a1e14', '#e8a06a')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#wakou-sky)"/>
+    <path d="M0 96 q25 -10 50 0 t50 0 t50 0 t50 0 V130 H0Z" fill="#1f3d6e"/>
+    <path d="M30 92 h120 l-14 16 h-92z" fill="#2b2014"/><path d="M150 92 l14 -12" stroke="#2b2014" stroke-width="4"/>
+    <path d="M86 92 V20" stroke="#2b2014" stroke-width="3"/>
+    <path d="M60 24 h50 l-4 56 h-42z" fill="#e6d6b0" stroke="#5c3b22"/>
+    <path d="M86 20 v-4 h30 v24 h-30z" fill="#fbf6e6"/><text x="101" y="34" text-anchor="middle" font-family="serif" font-size="12" font-weight="700" fill="#2b2014">八幡</text>
+    <circle cx="84" cy="52" r="10" fill="#b8322a"/>
+    <g fill="#e6c46a">${[[50, 114], [70, 118]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4"/>`).join('')}</g>`,
+
+  // 寄せ物拾い: 浜に打ち上げられた積み荷を拾う人
+  yosemono: () => `
+    <defs>${skyGradient('yosemono-sky', '#b8c8d0', '#ece6d6')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#yosemono-sky)"/>
+    <path d="M0 64 q25 -6 50 0 t50 0 t50 0 t50 0 V84 H0Z" fill="#3c6aa0"/>
+    <path d="M0 80 Q100 74 200 80 V130 H0Z" fill="#e4d2a6"/>
+    <rect x="30" y="92" width="34" height="22" fill="#6b4a2b" transform="rotate(-10 47 103)"/>
+    <ellipse cx="150" cy="108" rx="14" ry="8" fill="#a07a4f"/><path d="M150 100 v16" stroke="#5c3b22"/>
+    <path d="M80 110 l30 -6" stroke="#8a6a3a" stroke-width="5"/>
+    <circle cx="112" cy="70" r="6" fill="#f3d7b6"/><path d="M104 76 h16 l-2 20 h-12z" fill="#5c4a3a"/><path d="M106 96 l-6 14 M116 96 l4 14" stroke="#5c4a3a" stroke-width="4"/>
+    <path d="M118 80 L130 96" stroke="#f3d7b6" stroke-width="4" stroke-linecap="round"/>
+    <g fill="#e6c46a">${[[132, 100], [138, 104]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3"/>`).join('')}</g>`,
+
+  // 磯女: 岩場に立つ黒髪の妖
+  isoonna: () => `
+    <defs>${skyGradient('isoonna-sky', '#1a2a3a', '#4a6a7a')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#isoonna-sky)"/>
+    <path d="M0 96 q25 -8 50 0 t50 0 t50 0 t50 0 V130 H0Z" fill="#1f3d6e"/>
+    <path d="M60 130 L80 90 L120 86 L150 130Z" fill="#2b2b2b"/>
+    <path d="M86 90 Q100 40 114 90Z" fill="#e8e0cc"/>
+    <circle cx="100" cy="44" r="9" fill="#f0ece0"/>
+    <path d="M90 40 C80 60 84 90 70 110 M110 40 C120 60 116 90 130 110 M94 38 C92 60 96 80 92 96 M106 38 C108 60 104 80 108 96" stroke="#0a0a10" stroke-width="5" fill="none"/>
+    <path d="M90 36 Q100 26 110 36" fill="#0a0a10"/>
+    <circle cx="96" cy="46" r="1.4" fill="#c0392b"/><circle cx="104" cy="46" r="1.4" fill="#c0392b"/>`,
+
+  // 埋蔵金の図: 墨で描かれた地図と、印のついた場所
+  maizou: () => `
+    ${washi('#3a2a1a', 'maizou')}
+    <g transform="rotate(-4 100 64)">
+      <rect x="20" y="14" width="160" height="100" fill="#e8d8b0" stroke="#8a6a3a"/>
+      <path d="M30 80 C50 60 70 90 90 70 S130 50 150 70 170 90 172 80" stroke="#3c6aa0" stroke-width="3" fill="none"/>
+      <path d="M40 40 l10 -12 l10 12z M60 46 l8 -10 l8 10z" fill="#6a5a3a"/>
+      <path d="M40 100 C60 96 100 104 130 90" stroke="#5c3b22" stroke-width="2" stroke-dasharray="4 4" fill="none"/>
+      <path d="M124 84 l12 12 M136 84 l-12 12" stroke="#b8322a" stroke-width="4"/>
+      <circle cx="160" cy="34" r="10" fill="none" stroke="#5c3b22"/><path d="M160 24 v20 M150 34 h20" stroke="#5c3b22"/>
+    </g>`,
+
+  // 渡海者: 荒波を越えて岬に立つ旅人と、海の向こうの金
+  tokaisha: () => `
+    <defs>${skyGradient('tokaisha-sky', '#e8a06a', '#f6eedc')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#tokaisha-sky)"/>
+    <path d="M0 80 q25 -8 50 0 t50 0 t50 0 t50 0 V130 H0Z" fill="#2f5a99"/>
+    <path d="M0 130 L0 70 L60 64 L80 130Z" fill="#5c4a3a"/>
+    <circle cx="40" cy="44" r="6" fill="#f3d7b6"/><path d="M32 40 L40 30 L48 40z" fill="#c9a46a"/><path d="M34 50 h12 l2 16 h-16z" fill="#3d5a7a"/>
+    <path d="M46 52 l14 -8" stroke="#f3d7b6" stroke-width="3"/>
+    <path d="M140 74 L160 46 L180 74Z" fill="#6a8a5a"/>
+    <g fill="#e2b23a">${[[156, 62], [166, 58], [160, 52]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="5" ry="3" stroke="#8a6410"/>`).join('')}</g>`,
+
+  // 早馬: 夜を駆ける早馬と伝令
+  hayauma: () => `
+    <defs>${skyGradient('hayauma-sky', '#2a3a6a', '#d8a06a')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#hayauma-sky)"/>
+    <rect y="104" width="${W}" height="26" fill="#5c4a3a"/>
+    <g stroke="#fff" stroke-width="2" opacity=".6">${[60, 72, 84].map(y => `<path d="M10 ${y} h40"/>`).join('')}</g>
+    <path d="M60 80 Q80 64 120 66 Q140 60 150 50 L160 54 Q156 66 150 72 L148 80 Q140 86 130 84 L126 104 h-6 l-2 -18 h-30 l-8 18 h-6 l4 -20 Q66 90 60 80Z" fill="#3b2a1a"/>
+    <path d="M150 50 l6 -8 l2 10z" fill="#3b2a1a"/><path d="M60 80 Q48 76 44 86" stroke="#3b2a1a" stroke-width="4" fill="none"/>
+    <circle cx="104" cy="48" r="6" fill="#f3d7b6"/><path d="M98 54 h12 l2 12 h-16z" fill="#8e2418"/><path d="M110 56 l14 4" stroke="#8e2418" stroke-width="3"/>`,
+
+  // 公文所: 文書を収める役所の棚と、勘定の帳
+  kumonjo: () => `
+    ${washi('#e6d8bc', 'kumonjo')}
+    <path d="M10 26 L100 6 L190 26Z" fill="#3b3b44"/>
+    <rect x="18" y="26" width="164" height="78" fill="#f2ead8" stroke="#8a7a5a"/>
+    ${[40, 64, 88].map(y => `<path d="M24 ${y} h152" stroke="#8a6a3a" stroke-width="2"/>`).join('')}
+    ${[0, 1, 2].map(r => Array.from({ length: 8 }, (_, i) => `<rect x="${28 + i * 18}" y="${30 + r * 24}" width="12" height="9" fill="${['#2c3e66', '#8e2418', '#3d6a4a'][(i + r) % 3]}"/>`).join('')).join('')}
+    <rect y="104" width="${W}" height="26" fill="#a07a4f"/>
+    <rect x="70" y="96" width="60" height="16" fill="#fbf6e6" stroke="#8a6a3a"/><text x="100" y="108" text-anchor="middle" font-family="serif" font-size="10" font-weight="700" fill="#2b2620">公文所</text>`,
 };
