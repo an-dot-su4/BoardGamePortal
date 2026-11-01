@@ -77,7 +77,9 @@ export function createUI(root, api) {   // api.send(action), api.toast(text), ap
   `e.later(...)`・`e.step(...)` で積んだ命令は、先に積んだ `e.play`・`e.attack` より**先に**実行される。「〜のあとで」は later を先に呼ぶ。
   持続札は `next(e)`、廃棄されたときの効果は `steps.onTrash`、場にある間の購入時効果は `whileInPlay.onBuy`。
 - `bot.js` の CPU はゲーム中の対戦相手とシミュレーションの両方で使う。新しいカードには `AI` の目安と、選択の答え方を足す。
-- `art.js` が SVG のイラスト。描いていない札は名前の一文字の仮の絵になる。一覧は `gallery.html`。
+- `art.js` と `art/<時代>.js` が SVG のイラスト。描いていない札は名前の一文字の仮の絵になる。一覧は `gallery.html`。
+- バランス確認: `node tools/tenka-balance.mjs [試合数]`（各王国カードを軸にした CPU 対 お金だけの CPU の勝率）。
+  組み合わせ前提の札（寺・御前・里など）は単体では低く出るのが正常（ドミニオンの同じ札も同様）。
 - スマホ幅（390px 前後）で崩れないこと。共通のクラス（`.table` `.seats` `.seat` `.hand` `.result-box` `.game-actions` など）は `css/style.css` にある。
 
 ## テスト・確認

@@ -74,6 +74,7 @@ export function createUI(root, api) {
   let view = null;
   let picked = []; // 手札から選んでいる札（選択を求められたとき）
   let zoomed = null; // 拡大表示中の札
+  let overpay = 0; // 棟梁などで多く払う額
 
   const nameOf = id => view.players.find(p => p.id === id)?.name ?? '?';
 
@@ -158,7 +159,7 @@ export function createUI(root, api) {
         return h('div', { class: ['seat', turnP && 'turn', p.id === view.me && 'me'].filter(Boolean).join(' ') },
           h('div', { class: 'name' }, p.bot ? '🤖 ' : '', p.name),
           h('div', { class: 'small' }, `手札${p.hand}・山札${p.deck}・捨て札${p.discard}`),
-          h('div', { class: 'small muted' }, `全${p.total}枚`, p.fame ? `・名声${p.fame}` : '', p.vp !== null ? `・${p.vp}点` : ''),
+          h('div', { class: 'small muted' }, `全${p.total}枚`, p.fame ? `・名声${p.fame}` : '', p.coffers ? `・蓄え${p.coffers}` : '', p.vp !== null ? `・${p.vp}点` : ''),
           turnP && p.play.length
             ? h('div', { class: 'tk-play' }, p.play.map(id => h('span', { class: `tk-pill tk-pill-${pillType(id)}` }, CARDS[id].name)))
             : null,
@@ -196,16 +197,17 @@ export function createUI(root, api) {
     });
 
     const hasTreasure = view.hand.some(id => isType(id, 'treasure'));
+    const me = view.players.find(p => p.id === view.me);
     const actions = myTurn && !view.prompt
       ? h('div', { class: 'game-actions' },
           hasTreasure ? h('button', { class: 'btn', type: 'button', onclick: () => send({ type: 'treasures' }) }, '💰 財宝をすべて出す') : null,
+          me.coffers > 0 ? h('button', { class: 'btn', type: 'button', onclick: () => send({ type: 'coffer' }) }, `🪙 蓄えを使う（+1文・残り${me.coffers}）`) : null,
           t.phase === 'action'
             ? h('button', { class: 'btn primary', type: 'button', onclick: () => send({ type: 'end' }) }, '購入フェーズへ')
             : h('button', { class: 'btn primary', type: 'button', onclick: () => send({ type: 'end' }) }, '手番を終える'),
           h('span', { class: 'small' }, t.phase === 'action' ? '行動札をタップで使う。財宝をタップで購入へ' : '王国・基本の札をタップして購入'),
         )
       : null;
-    const me = view.players.find(p => p.id === view.me);
     return h('section', {},
       h('div', { class: 'tk-row-title small' }, `あなたの手札（${view.hand.length}枚）`, h('span', { class: 'muted' }, `山札${me.deck}・捨て札${me.discard}・全${me.total}枚`)),
       actions,
@@ -258,6 +260,8 @@ export function createUI(root, api) {
     const c = CARDS[zoomed];
     const n = view.supply[zoomed];
     const canBuy = myTurn && !view.prompt && view.turn.buys > 0 && n > 0 && view.turn.coins >= c.cost && !c.notSupply;
+    const maxOver = canBuy && c.onOverpay ? view.turn.coins - c.cost : 0;
+    overpay = Math.min(overpay, maxOver);
     const close = () => {
       zoomed = null;
       render();
@@ -268,10 +272,25 @@ export function createUI(root, api) {
         h('div', { class: 'small', style: { color: '#fff' } }, `残り${n}枚・${c.types.map(t => TYPE_LABEL[t]).join('・')}`),
         h('div', { class: 'game-actions' },
           canBuy
-            ? h('button', { class: 'btn primary', type: 'button', onclick: () => { zoomed = null; send({ type: 'buy', card: c.id }); } }, `${c.cost}文で購入`)
+            ? h('button', {
+                class: 'btn primary',
+                type: 'button',
+                onclick: () => {
+                  zoomed = null;
+                  send(overpay ? { type: 'buy', card: c.id, overpay } : { type: 'buy', card: c.id });
+                  overpay = 0;
+                },
+              }, `${c.cost + overpay}文で購入`)
             : null,
           h('button', { class: 'btn', type: 'button', onclick: close }, '閉じる'),
         ),
+        maxOver > 0
+          ? h('label', { class: 'small', style: { color: '#fff' } }, '多く払う（1文につき銀1枚）: ',
+              h('select', { class: 'input', style: { width: 'auto', display: 'inline-block' }, onchange: e => { overpay = Number(e.target.value); render(); } },
+                Array.from({ length: maxOver + 1 }, (_, k) => h('option', { value: k, selected: k === overpay }, `+${k}文`)),
+              ),
+            )
+          : null,
         myTurn && !canBuy && view.turn.phase ? h('div', { class: 'small', style: { color: '#fff' } }, n === 0 ? '山が空です' : view.turn.buys < 1 ? '購入が残っていません' : `あと${c.cost - view.turn.coins}文足りません（財宝を出すと文が増えます）`) : null,
       ),
     );

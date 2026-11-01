@@ -69,6 +69,18 @@ const AI = {
   yakiuchi: { value: 5 },
   shinobi: { value: 6 },
   takagari: { value: 7 },
+  // 江戸
+  shukuba: { chain: true, value: 3 },
+  touryou: { chain: true, value: 2 },
+  hikyaku: { value: 4 },
+  yose: { chain: true, value: 5 },
+  kabuki: { chain: true, value: 5 },
+  bantou: { chain: true, value: 5 },
+  ryougae: { chain: true, value: 6 },
+  echigoya: { value: 5 },
+  ukiyoe: { value: 6 },
+  sankin: { value: 8 },
+  senryou: { chain: true, value: 5 },
 };
 
 const cost = id => CARDS[id].cost;
@@ -87,7 +99,15 @@ export function makeBot(strategy = 'normal') {
     }
     if (hand.some(id => isType(id, 'treasure') && !isType(id, 'action'))) return { type: 'treasures' };
     if (t.buys > 0) {
+      // 蓄えを使えば一段上の札に届くなら、1つずつ使う
+      const coffers = g.ps[pid].coffers ?? 0;
+      if (coffers > 0) {
+        const goals = ['gosho' in g.supply ? 11 : 0, 'ohban' in g.supply ? 9 : 0, 8, 6].filter(Boolean);
+        if (goals.some(goal => t.coins < goal && t.coins + coffers >= goal)) return { type: 'coffer' };
+      }
       const b = chooseBuy(g, pid, strategy, rng);
+      // 棟梁は、余った文を全部多く払って銀にする（最後の購入のとき）
+      if (b === 'touryou' && t.buys === 1) return { type: 'buy', card: b, overpay: t.coins - CARDS[b].cost };
       if (b) return { type: 'buy', card: b };
     }
     return { type: 'end' };
@@ -138,7 +158,8 @@ function wants(g, pid, id, strategy) {
   const terminals = favorites(g, pid, strategy).filter(f => !AI[f]?.chain);
   const terminalCount = terminals.reduce((a, f) => a + count(g, pid, f), 0);
   if (!AI[id]?.chain) return terminalCount < 2 + Math.floor(totalCards(g, pid) / 12);
-  return count(g, pid, id) < 4;
+  // つなぎの札（+行動）も、財宝の代わりに買いすぎると弱くなるので2枚まで
+  return count(g, pid, id) < 2;
 }
 
 function totalCards(g, pid) {
@@ -216,6 +237,7 @@ function answerPrompt(g, pid, strategy) {
     const junk = cands.filter(id => keepScore(id) <= 0).sort((a, b) => keepScore(a) - keepScore(b));
     return junk.length >= 2 ? junk.slice(0, 2) : [];
   }
+  if (pr.kind === 'list' && card === 'kabuki') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0]; // 相手の一番良い札を捨てさせる
   if (pr.kind === 'list' && card === 'yakiuchi') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0]; // 相手の一番良い札
   if (pr.kind === 'list' && card === 'shinobi' && step === 'steal') return cands.sort((a, b) => cost(b) - cost(a))[0];
   if (pr.kind === 'list' && card === 'shinobi') return cands.sort((a, b) => keepScore(a) - keepScore(b))[0];
@@ -228,6 +250,13 @@ function answerPrompt(g, pid, strategy) {
     if (card === 'shoko') return g.turn.actions > 0 ? 'keep' : 'aside';
     if (card === 'ikkou') return 'yes';
     if (card === 'takagari') return 'shouen';
+    if (card === 'hikyaku') return 'no';
+    if (card === 'echigoya') {
+      const base = CARDS[pr.then.data.from].cost;
+      const max = pr.options.length - 1;
+      const target = base + max >= 8 ? 8 : base + max >= 6 ? 6 : base;
+      return Math.max(0, Math.min(max, target - base));
+    }
     return pr.options[0].value;
   }
 
@@ -242,6 +271,8 @@ function answerPrompt(g, pid, strategy) {
   else if (card === 'tera') picked = pickBy(id => trashScore(g, pid, id), id => trashScore(g, pid, id) > 0);
   else if (card === 'kanekashi') picked = cands.slice(0, 1);
   else if (card === 'gozen' || card === 'shichifuku') picked = [chooseActionFrom(cands.filter(id => id !== 'gozen' && id !== 'shichifuku')) ?? cands[0]].slice(0, 1);
+  else if (card === 'yose') picked = cands.includes('zeni') ? ['zeni'] : [];
+  else if (card === 'echigoya') picked = cands.filter(id => trashScore(g, pid, id) > 0 || id === 'kin').sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a)).slice(0, 1);
   else if (card === 'katanagari' || card === 'kobutsu') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
   else if (card === 'gekokujo') picked = cands.filter(id => id !== 'gekokujo').sort((a, b) => (AI[a]?.value ?? 1) - (AI[b]?.value ?? 1)).slice(0, 1);
   else if (card === 'kuramoto') picked = cands.filter(id => keepScore(id) < 0);

@@ -140,6 +140,8 @@ function effectContext(g, rng, op) {
     durEntry: () => g.ps[e.p].durNext[e.data.dur],
     // 名声（勝利点トークン）
     fame: (n, who = e.p) => (g.ps[who].fame = (g.ps[who].fame ?? 0) + n),
+    // 蓄え（江戸の小判トークン）
+    coffers: (n, who = e.p) => (g.ps[who].coffers = (g.ps[who].coffers ?? 0) + n),
     newToken: () => `${g.turnNo}-${(g.seq = (g.seq ?? 0) + 1)}`,
   };
   return e;

@@ -335,6 +335,7 @@ button.tk-card:hover { transform: translateY(-2px); }
 .tk-chip-coin { background: #b8860b; }
 .tk-chip-vp { background: #4f8a3a; font-size: 1.2em; }
 .tk-chip-fame { background: #4f8a3a; }
+.tk-chip-coffer { background: #a0522d; }
 .tk-chip-curse { background: #6a4a8a; font-size: 1.2em; }
 .tk-foot { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #5a4a3a; }
 .tk-cost {

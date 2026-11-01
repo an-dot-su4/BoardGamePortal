@@ -81,10 +81,12 @@ const scenarios = {
     const { pages } = await openGame('天下札', ['あき', 'はる'], VIEWPORT, async (host, [guest]) => {
       await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
       await host.waitForSelector('#players li:has-text("CPU")');
-      // 鎌倉も使い、平安＋鎌倉のおすすめセットにする
-      await host.locator('label.tk-set-check', { hasText: '鎌倉' }).locator('input').check();
-      await host.locator('select:has(option[value="kamakura-houkou"])').selectOption('kamakura-houkou');
-      await guest.waitForSelector('select:has(option[value="kamakura-houkou"]:checked)');
+      // 既定は平安＋鎌倉のおすすめセット。TENKA_ERAS="江戸" TENKA_PRESET=edo-chounin のように変えられる
+      const eras = (process.env.TENKA_ERAS ?? '鎌倉').split(',');
+      const preset = process.env.TENKA_PRESET ?? 'kamakura-houkou';
+      for (const era of eras) await host.locator('label.tk-set-check', { hasText: era }).locator('input').check();
+      await host.locator(`select:has(option[value="${preset}"])`).selectOption(preset);
+      await guest.waitForSelector(`select:has(option[value="${preset}"]:checked)`);
       await host.locator('details.tk-ban summary').click();
       // おすすめセットに入っている検非違使を BAN する（代わりが入るはず）
       await host.locator('.tk-ban-grid [data-card="kebiishi"]').click();
@@ -112,6 +114,7 @@ const scenarios = {
         }
         if (!(await has(p, 'text=あなたの手番'))) continue;
         if (await has(p, 'button:text("💰 財宝をすべて出す")')) await p.getByRole('button', { name: '💰 財宝をすべて出す' }).click();
+        if (await has(p, 'button:has-text("蓄えを使う")')) await p.locator('button:has-text("蓄えを使う")').click();
         const affordable = p.locator('.tk-supply .tk-selected');
         if ((await affordable.count()) > 0) {
           await affordable.last().click();

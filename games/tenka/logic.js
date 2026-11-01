@@ -108,7 +108,7 @@ export function setup(players, rng = Math.random, options = {}) {
     log: ['⛩️ 天下札、開始！ 王国: ' + kingdom.map(id => card(id).name).join('・')],
   };
   for (const pid of ids) {
-    g.ps[pid] = { deck: shuffle([...Array(7).fill('zeni'), ...Array(3).fill('ta')], rng), hand: [], discard: [], play: [], aside: [], dur: [], durNext: [], durEffects: [], look: [], fame: 0, turns: 0 };
+    g.ps[pid] = { deck: shuffle([...Array(7).fill('zeni'), ...Array(3).fill('ta')], rng), hand: [], discard: [], play: [], aside: [], dur: [], durNext: [], durEffects: [], look: [], fame: 0, coffers: kingdom.reduce((a, id) => Math.max(a, card(id).startCoffers ?? 0), 0), turns: 0 };
     draw(g, rng, pid, HAND_SIZE);
   }
   startTurn(g, ids[Math.floor(rng() * n)], rng);
@@ -252,15 +252,26 @@ export function act(g, pid, action, rng = Math.random) {
     return;
   }
 
+  // 蓄えを1つ使って+1文
+  if (type === 'coffer') {
+    const ps = g.ps[pid];
+    if (!(ps.coffers > 0)) throw new GameError('蓄えがありません');
+    ps.coffers -= 1;
+    t.coins += 1;
+    return;
+  }
+
   if (type === 'buy') {
     const id = action.card;
+    const over = Number(action.overpay ?? 0);
     if (!(id in g.supply)) throw new GameError('その札は売っていません');
     if (g.supply[id] <= 0) throw new GameError('その山はもう空です');
     enterBuy(g);
     if (t.buys < 1) throw new GameError('購入がもう残っていません');
-    if (t.coins < card(id).cost) throw new GameError(`お金が足りません（${card(id).cost}文必要）`);
+    if (!Number.isInteger(over) || over < 0 || (over > 0 && !card(id).onOverpay)) throw new GameError('多く払う額が正しくありません');
+    if (t.coins < card(id).cost + over) throw new GameError(`お金が足りません（${card(id).cost + over}文必要）`);
     if (card(id).canBuy?.(g, pid) === false) throw new GameError(`${card(id).name}は今は買えません（場に銅銭があるなど）`);
-    t.coins -= card(id).cost;
+    t.coins -= card(id).cost + over;
     t.buys -= 1;
     gain(g, pid, id);
     t.bought.push(id);
@@ -270,8 +281,10 @@ export function act(g, pid, action, rng = Math.random) {
       name: nameOf(g, pid),
       gain: cid => gain(g, pid, cid),
       fame: n => (g.ps[pid].fame += n),
+      coffers: n => (g.ps[pid].coffers += n),
       log: text => log(g, text),
     };
+    if (over > 0) card(id).onOverpay(x, over);
     for (const c of g.ps[pid].play.slice()) card(c).whileInPlay?.onBuy?.(x, id);
     return;
   }
@@ -323,6 +336,7 @@ export function view(g, pid) {
         aside: ps.aside,
         dur: ps.dur,
         fame: ps.fame ?? 0,
+        coffers: ps.coffers ?? 0,
         total: allCards(g, p).length,
         vp: g.phase === 'over' ? score(g, p) : null,
       };
