@@ -7,7 +7,7 @@ import { SENGOKU } from './sengoku.js';
 import { EDO } from './edo.js';
 
 export const SETS = [
-  { id: 'heian', name: '平安', era: '基本', ready: true, feature: '基本セット。引く・行動を増やす・妨害・圧縮。単体で遊べる。' },
+  { id: 'heian', name: '平安', era: '基本', ready: true, feature: '基本セット（本家の基本セット初版と同じ25種）。引く・行動を増やす・妨害・圧縮。単体で遊べる。' },
   { id: 'kamakura', name: '鎌倉', ready: true, feature: '持続（御恩と奉公）: 次の手番にも効く札。' },
   { id: 'muromachi', name: '室町', ready: true, feature: '財宝と文化: 大判・御所・名声（勝利点トークン）。' },
   { id: 'sengoku', name: '戦国', ready: true, feature: '下剋上: 廃棄・落武者・戦利品・激しい妨害。' },
@@ -27,6 +27,8 @@ export const PRESETS = [
   { id: 'heian-first', name: 'はじめての平安', note: '最初の1回におすすめ', cards: ['kura', 'ichi', 'kebiishi', 'kanayama', 'kekkai', 'zouei', 'shakyo', 'sato', 'koubou', 'gissha'] },
   { id: 'heian-curse', name: '祟りの都', note: '呪術師と結界の攻防', cards: ['jujutsu', 'kekkai', 'tera', 'teien', 'gozen', 'onmyo', 'ichi', 'sato', 'zouei', 'kura'] },
   { id: 'heian-insei', name: '院の権勢', note: '御前で強い札を2回', cards: ['gozen', 'shoko', 'chougi', 'utage', 'kanekashi', 'shakyo', 'koubou', 'kanayama', 'kebiishi', 'gissha'] },
+  { id: 'heian-takara', name: '都の財', note: 'お金を増やす札が中心', cards: ['kentoushi', 'kokushi', 'sessho', 'tera', 'sechie', 'onmyo', 'ichi', 'kanayama', 'kanekashi', 'gozen'] },
+  { id: 'heian-mittei', name: '間者と盗賊', note: 'ほかの人に関わる札が中心', cards: ['kokushi', 'sessho', 'chougi', 'utage', 'shoko', 'kebiishi', 'kekkai', 'mittei', 'tozoku', 'sato'] },
   { id: 'kamakura-umi', name: '鎌倉の海', note: '鎌倉だけで持続を味わう', cards: ['monomi', 'shugo', 'ryoshi', 'hikitsuke', 'mihari', 'gokenin', 'akutou', 'sousen', 'toimaru', 'genkou'] },
   { id: 'kamakura-houkou', name: '奉公の道', note: '平安＋鎌倉。持続の入門', cards: ['ryoshi', 'gokenin', 'toimaru', 'sousen', 'monomi', 'kebiishi', 'sato', 'shakyo', 'ichi', 'kura'] },
   { id: 'muromachi-eiga', name: '室町の栄華', note: '室町だけで大判・御所を目指す', cards: ['za', 'chanoyu', 'jisha', 'kangou', 'machishu', 'kuramoto', 'nougaku', 'kinkaku', 'dosou', 'shichifuku'] },

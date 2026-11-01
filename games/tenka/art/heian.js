@@ -283,4 +283,81 @@ export const HEIAN_ART = {
     }).join('')).join('')}
     <g stroke="#a07a4f" stroke-width="4"><path d="M136 130 L160 4"/><path d="M168 130 L190 4"/></g>
     <g stroke="#a07a4f" stroke-width="3">${[20, 44, 68, 92, 116].map(y => `<path d="M${160 - (y - 4) * 0.19 - 22} ${y} h30"/>`).join('')}</g>`,
+
+  // 摂政: 笏を持つ束帯姿と、背後の御簾
+  sessho: () => `
+    <defs><linearGradient id="sessho-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8c8a0"/><stop offset="1" stop-color="#f6ecd8"/></linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#sessho-g)"/>
+    <path d="M20 8 h160 v60 h-160z" fill="#e6d3a0"/><g stroke="#a88c5a" stroke-width="1">${Array.from({ length: 19 }, (_, i) => `<path d="M20 ${11 + i * 3} h160"/>`).join('')}</g>
+    <rect x="16" y="6" width="168" height="6" fill="#3b2a1a"/>
+    <rect y="104" width="${W}" height="26" fill="#3b7a4a"/><rect y="104" width="${W}" height="4" fill="#e6c46a"/>
+    <path d="M56 112 Q100 46 144 112Z" fill="#1d1d1d"/>
+    <path d="M100 66 L82 112 M100 66 L118 112" stroke="#3b3b44" stroke-width="2"/>
+    <circle cx="100" cy="54" r="11" fill="#f3d7b6"/>
+    <path d="M90 50 h20 v-6 h-20z" fill="#1d1d1d"/><path d="M100 44 v-12" stroke="#1d1d1d" stroke-width="4"/>
+    <path d="M100 78 l-4 -18 h8z" fill="#e6d6b0"/>
+    <path d="M60 112 h80" stroke="#8e2418" stroke-width="3"/>`,
+
+  // 国司: 赴任する国司と、運ばれる銀の箱・国印
+  kokushi: () => `
+    <defs>${skyGradient('kokushi-sky', '#bcd6e8', '#f4ecd8')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#kokushi-sky)"/>
+    <path d="M0 74 Q60 54 120 70 T200 64 V130 H0Z" fill="#9cc58a"/>
+    <path d="M30 130 Q80 96 140 92 T200 86" stroke="#e4cf9c" stroke-width="12" fill="none"/>
+    <circle cx="90" cy="70" r="8" fill="#f3d7b6"/><path d="M82 66 h16 v-5 h-16z" fill="#1d1d1d"/>
+    <path d="M78 104 L84 78 h12 l6 26z" fill="#8e2418"/>
+    <path d="M120 96 h34 v-18 h-34z" fill="#6b3a1a" stroke="#3b2014"/><path d="M114 98 h46" stroke="#5c3b22" stroke-width="3"/>
+    <g fill="#cfd5db">${[124, 134, 144].map(x => `<ellipse cx="${x}" cy="76" rx="5" ry="3" stroke="#7d8894"/>`).join('')}</g>
+    <rect x="40" y="70" width="18" height="18" fill="#fbf6e6" stroke="#b8322a" stroke-width="2"/><path d="M44 75 h10 M49 73 v12 M44 81 h10" stroke="#b8322a" stroke-width="1.5"/>
+    <path d="M150 20 v40" stroke="#5c3b22" stroke-width="2"/><path d="M150 22 h16 v30 h-16z" fill="#fbf6e6"/><circle cx="158" cy="37" r="5" fill="#b8322a"/>`,
+
+  // 節会: 舞楽の舞人と、朱の高欄（一度きりの宴）
+  sechie: () => `
+    <defs><radialGradient id="sechie-g" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#f6b8a0"/><stop offset="1" stop-color="#b8322a"/></radialGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#sechie-g)"/>
+    <rect y="96" width="${W}" height="34" fill="#3b7a4a"/>
+    <path d="M0 96 H200" stroke="#e6c46a" stroke-width="4"/>
+    <g stroke="#8e2418" stroke-width="5">${[10, 50, 150, 190].map(x => `<path d="M${x} 96 v-22"/>`).join('')}<path d="M0 76 H60 M140 76 H200"/></g>
+    <path d="M100 30 l-14 -12 h28z" fill="#e6c46a"/>
+    <ellipse cx="100" cy="40" rx="11" ry="12" fill="#c0392b"/><path d="M94 38 h4 M102 38 h4" stroke="#1d1d1d" stroke-width="2"/><path d="M95 46 q5 3 10 0" stroke="#1d1d1d" stroke-width="1.5" fill="none"/>
+    <path d="M100 52 L70 72 L84 76 L76 100 h48 l-8 -24 l14 -4z" fill="#2c3e66"/>
+    <path d="M70 72 L44 60 M130 72 L156 56" stroke="#e6c46a" stroke-width="3"/>
+    <path d="M156 56 l10 -10" stroke="#e6c46a" stroke-width="5"/>
+    <g fill="#ffe39a">${[[30, 30], [170, 30], [60, 20]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2"/>`).join('')}</g>`,
+
+  // 密偵: 屏風の陰からのぞく目
+  mittei: () => `
+    ${washi('#2a2420', 'mittei')}
+    ${[0, 1, 2, 3].map(i => `<path d="M${10 + i * 44} 10 h44 v110 h-44z" fill="${i % 2 ? '#d8b878' : '#e6c88a'}" stroke="#5c3b22" stroke-width="2"/>`).join('')}
+    <path d="M14 70 q30 -30 60 -10 t60 -10 t60 10" stroke="#3d6a3a" stroke-width="6" fill="none" opacity=".7"/>
+    <circle cx="40" cy="36" r="12" fill="#e8b878" opacity=".8"/>
+    <path d="M140 10 h44 v110 h-44z" fill="#1d1d1d" opacity=".55"/>
+    <path d="M150 60 q12 -10 24 0 q-12 10 -24 0z" fill="#f6eedc"/><circle cx="162" cy="60" r="4" fill="#1d1d1d"/>
+    <path d="M146 54 q16 -8 32 0" stroke="#1d1d1d" stroke-width="3" fill="none"/>`,
+
+  // 盗賊: 月夜に千両…ではなく唐櫃を担いで逃げる影
+  tozoku: () => `
+    <defs>${skyGradient('tozoku-sky', '#141a30', '#3a4a6a')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#tozoku-sky)"/>
+    <circle cx="160" cy="30" r="16" fill="#f6eec8"/>
+    <path d="M0 110 H200 V130 H0Z" fill="#1d1d14"/>
+    <path d="M20 110 V60 h50 v50" fill="#2b2b38"/><path d="M14 62 L45 44 L76 62Z" fill="#1d1d26"/>
+    <circle cx="112" cy="58" r="7" fill="#0a0a10"/>
+    <path d="M112 66 L106 88 L94 110 M106 88 L122 108" stroke="#0a0a10" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <path d="M110 68 L126 84" stroke="#0a0a10" stroke-width="5" stroke-linecap="round"/>
+    <rect x="118" y="60" width="36" height="22" fill="#5c3b22" stroke="#e6c46a" stroke-width="1.5" transform="rotate(-12 136 71)"/>
+    <g fill="#e6c46a">${[[150, 92], [158, 100]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="5" ry="3"/>`).join('')}</g>`,
+
+  // 遣唐使: 宝を積んで帰る遣唐使船
+  kentoushi: () => `
+    <defs>${skyGradient('kentoushi-sky', '#f2c08a', '#f6eedc')}</defs>
+    <rect width="${W}" height="${H}" fill="url(#kentoushi-sky)"/>
+    <circle cx="40" cy="30" r="14" fill="#d9472b" opacity=".85"/>
+    <path d="M0 96 q25 -10 50 0 t50 0 t50 0 t50 0 V130 H0Z" fill="#2f5a99"/>
+    <path d="M40 90 Q100 104 160 90 L150 104 Q100 114 50 104Z" fill="#b8322a"/>
+    <path d="M70 92 V30 M128 92 V40" stroke="#3b2a1a" stroke-width="3"/>
+    <path d="M52 32 h36 v44 h-36z" fill="#e6d3a0" stroke="#8a6a3a"/><g stroke="#8a6a3a">${[44, 56, 68].map(y => `<path d="M52 ${y} h36"/>`).join('')}</g>
+    <path d="M112 42 h32 v40 h-32z" fill="#e6d3a0" stroke="#8a6a3a"/><g stroke="#8a6a3a">${[54, 66].map(y => `<path d="M112 ${y} h32"/>`).join('')}</g>
+    <path d="M86 92 h28 v-10 h-28z" fill="#2b2014" stroke="#e6c46a"/>
+    <g fill="#e6c46a">${[[92, 80], [100, 78], [108, 80]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3"/>`).join('')}</g>`,
 };

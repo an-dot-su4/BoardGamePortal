@@ -1,4 +1,4 @@
-// 平安（基本セット）: 引く・行動を増やす・妨害・山札の圧縮。どのカードも1枚で意味が完結する
+// 平安（基本セット・本家の基本セット初版と同じ25種）: 引く・行動を増やす・妨害・山札の圧縮。どのカードも1枚で意味が完結する
 // 効果の組み立て方は ../engine.js の effectContext を参照
 export const HEIAN = {
   kura: {
@@ -283,7 +283,172 @@ export const HEIAN = {
       },
     },
   },
+
+  sessho: {
+    name: '摂政',
+    cost: 3,
+    types: ['action'],
+    text: '+2文\n山札をすべて捨て札にしてもよい。',
+    play(e) {
+      e.coins(2);
+      if (!e.g.ps[e.p].deck.length) return;
+      e.ask({ kind: 'option', title: '摂政: 山札をすべて捨て札にする？', options: [{ value: 'yes', label: '捨て札にする' }, { value: 'no', label: 'そのまま' }] }, 'dump');
+    },
+    steps: {
+      dump(e, choice) {
+        if (choice !== 'yes') return;
+        const ps = e.g.ps[e.p];
+        ps.discard.push(...ps.deck);
+        ps.deck = [];
+      },
+    },
+  },
+  kokushi: {
+    name: '国司',
+    cost: 4,
+    types: ['action', 'attack'],
+    text: '銀を1枚、山札の上に獲得する。ほかの全員は、手札の勝利点の札を1枚山札の上に置く（無ければ手札を見せる）。',
+    play(e) {
+      e.gain('gin', e.p, 'deck');
+      e.attack('hit');
+    },
+    steps: {
+      hit(e) {
+        const vs = e.hand(e.target).filter(id => cardTypes(id).includes('victory'));
+        if (!vs.length) return e.log(`${e.name(e.target)}: 勝利点の札なし（手札: ${e.hand(e.target).map(cardName).join('・')}）`);
+        if (new Set(vs).size === 1) return e.step('put', { card: vs[0] });
+        e.ask({ p: e.target, kind: 'hand', min: 1, max: 1, types: ['victory'], title: '国司: 山札の上に置く勝利点の札を選ぶ' }, 'chosen');
+      },
+      chosen(e, ids) {
+        if (ids.length) e.step('put', { card: ids[0] });
+      },
+      put(e) {
+        const ps = e.g.ps[e.target];
+        ps.hand.splice(ps.hand.indexOf(e.data.card), 1);
+        ps.deck.push(e.data.card);
+        e.log(`${e.name(e.target)}: ${cardName(e.data.card)}を山札の上へ`);
+      },
+    },
+  },
+  sechie: {
+    name: '節会',
+    cost: 4,
+    types: ['action'],
+    text: 'この札を廃棄する。コスト5以下の札を1枚獲得する。',
+    play(e) {
+      const play = e.g.ps[e.p].play;
+      const i = play.lastIndexOf('sechie');
+      if (i >= 0) {
+        play.splice(i, 1);
+        e.trashCard('sechie');
+      }
+      e.ask({ kind: 'supply', min: 1, maxCost: 5, title: '節会: コスト5以下の札を獲得' }, 'gain');
+    },
+    steps: {
+      gain(e, id) {
+        if (id && e.gain(id)) e.log(`${e.name()}: 節会のあとで${cardName(id)}を獲得`);
+      },
+    },
+  },
+  mittei: {
+    name: '密偵',
+    cost: 4,
+    types: ['action', 'attack'],
+    text: '+1札\n+1行動\n全員（自分も）の山札の一番上を公開し、それぞれ捨てるか戻すかをあなたが決める。',
+    play(e) {
+      e.draw(1);
+      e.actions(1);
+      e.attack('look'); // ほかの人（結界などで防げる）
+      e.step('lookSelf'); // 自分が先
+    },
+    steps: {
+      lookSelf(e) {
+        e.target = e.p;
+        peek(e, e.p);
+      },
+      look(e) {
+        peek(e, e.target);
+      },
+      decide(e, choice) {
+        const who = e.data.who;
+        const ps = e.g.ps[who];
+        const id = ps.look.pop();
+        if (choice === 'discard') ps.discard.push(id);
+        else ps.deck.push(id);
+        e.log(`${e.name()}: ${e.name(who)}の${cardName(id)}を${choice === 'discard' ? '捨てさせた' : '戻した'}`);
+      },
+    },
+  },
+  tozoku: {
+    name: '盗賊',
+    cost: 4,
+    types: ['action', 'attack'],
+    text: 'ほかの全員は山札の上から2枚を公開する。財宝があれば、そのうちあなたが選んだ1枚を廃棄し、残りは捨てる。廃棄した札は獲得してもよい。',
+    play(e) {
+      e.attack('hit');
+    },
+    steps: {
+      hit(e) {
+        const ps = e.g.ps[e.target];
+        const seen = e.draw(2, e.target);
+        for (const id of seen) ps.hand.splice(ps.hand.lastIndexOf(id), 1);
+        ps.look.push(...seen);
+        if (seen.length) e.log(`${e.name(e.target)}: ${seen.map(cardName).join('・')}を公開`);
+        const treasures = seen.filter(id => cardTypes(id).includes('treasure'));
+        if (!treasures.length) return e.step('rest');
+        e.ask({ p: e.p, kind: 'list', cards: treasures, min: 1, max: 1, title: `盗賊: ${e.name(e.target)} から奪う財宝を選ぶ` }, 'steal');
+      },
+      steal(e, id) {
+        const ps = e.g.ps[e.target];
+        ps.look.splice(ps.look.indexOf(id), 1);
+        e.g.trash.push(id);
+        e.step('rest');
+        e.ask({ p: e.p, kind: 'option', title: `奪った${cardName(id)}を自分のものにする？`, options: [{ value: 'yes', label: '獲得する' }, { value: 'no', label: '廃棄のまま' }] }, 'keep', { card: id });
+      },
+      keep(e, choice) {
+        if (choice !== 'yes') return;
+        e.g.trash.splice(e.g.trash.lastIndexOf(e.data.card), 1);
+        e.g.ps[e.p].discard.push(e.data.card);
+      },
+      rest(e) {
+        const ps = e.g.ps[e.target];
+        ps.discard.push(...ps.look);
+        ps.look = [];
+      },
+    },
+  },
+  kentoushi: {
+    name: '遣唐使',
+    cost: 6,
+    types: ['action'],
+    text: '財宝が2枚出るまで山札をめくる。その2枚を手札に加え、ほかにめくった札は捨てる。',
+    play(e) {
+      const ps = e.g.ps[e.p];
+      let found = 0;
+      const others = [];
+      while (found < 2) {
+        const [id] = e.draw(1);
+        if (!id) break;
+        if (cardTypes(id).includes('treasure')) found++;
+        else {
+          ps.hand.splice(ps.hand.lastIndexOf(id), 1);
+          others.push(id);
+        }
+      }
+      ps.discard.push(...others);
+    },
+  },
 };
+
+// 山札の一番上を公開して、捨てるか戻すかを使った人が決める（密偵）
+function peek(e, who) {
+  const ps = e.g.ps[who];
+  const [id] = e.draw(1, who);
+  if (!id) return;
+  ps.hand.splice(ps.hand.lastIndexOf(id), 1);
+  ps.look.push(id);
+  e.ask({ p: e.p, kind: 'option', title: `密偵: ${e.name(who)}の山札の一番上は${cardName(id)}`, options: [{ value: 'discard', label: '捨てさせる' }, { value: 'back', label: '戻す' }] }, 'decide', { who, card: id });
+}
 
 // engine.js を読み込むと循環するので、名前・コスト・種類はここで引く
 import { CARDS } from './index.js';

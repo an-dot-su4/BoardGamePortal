@@ -208,9 +208,11 @@ test('BAN: 選ばれず、おすすめセットの穴は埋まり、足りなけ
   const g = T.setup(makePlayers(2), seededRng(1), { preset: 'heian-curse', bans: ['jujutsu'] });
   assert.equal(g.supply.tatari, undefined, '祟りを配る札がなければ祟りの山は無い');
 
-  const many = T.KINGDOM.map(c => c.id).slice(0, 10);
+  // 平安だけで、使える札が9種になるまで BAN すると開始できない
+  const heian = T.KINGDOM.filter(c => c.set === 'heian').map(c => c.id);
+  const many = heian.slice(0, heian.length - 9);
   assert.match(T.validateOptions({ bans: many }), /10種そろいません/);
-  assert.equal(T.validateOptions({ bans: many.slice(0, 9) }), null);
+  assert.equal(T.validateOptions({ bans: many.slice(1) }), null);
   assert.deepEqual(T.normalizeOptions({ bans: ['zeni', 'kuni', 'sato', 'sato'], sets: ['nope'] }), { sets: ['heian'], preset: 'random', bans: ['sato'] });
 });
 
@@ -251,4 +253,64 @@ test('王国カードを使う CPU は、お金だけの CPU より強い', () =
     if (g.result.find(r => r.id === normalId).win) wins++;
   }
   assert.ok(wins / N > 0.5, `王国カードを使う CPU の勝率 ${wins / N}`);
+});
+
+test('平安は本家の基本セット初版と同じ25種', () => {
+  assert.equal(T.KINGDOM.filter(c => c.set === 'heian').length, 25);
+});
+
+test('遣唐使: 財宝が2枚出るまでめくる', () => {
+  const { g, p } = fresh(2, ['kentoushi']);
+  g.ps[p].deck = ['zeni', 'gin', 'ta', 'kin', 'sato'];
+  play(g, p, 'kentoushi');
+  assert.deepEqual(g.ps[p].hand.sort(), ['gin', 'kin']);
+  assert.deepEqual(g.ps[p].discard.sort(), ['sato', 'ta']);
+});
+
+test('国司: 銀を山札の上に、相手は勝利点の札を山札の上に', () => {
+  const { g, p, o } = fresh(2, ['kokushi']);
+  g.ps[o].hand = ['ta', 'kuni', 'zeni'];
+  play(g, p, 'kokushi');
+  assert.equal(g.ps[p].deck.at(-1), 'gin');
+  assert.equal(g.prompt.p, o, '勝利点の札が2種類あるので相手が選ぶ');
+  choose(g, o, ['ta']);
+  assert.equal(g.ps[o].deck.at(-1), 'ta');
+});
+
+test('摂政・節会', () => {
+  let { g, p } = fresh(2, ['sessho']);
+  play(g, p, 'sessho');
+  choose(g, p, 'yes');
+  assert.equal(g.ps[p].deck.length, 0);
+  assert.equal(g.turn.coins, 2);
+  ({ g, p } = fresh(2, ['gozen', 'sechie']));
+  play(g, p, 'gozen');
+  choose(g, p, ['sechie']);
+  choose(g, p, 'ichi');
+  choose(g, p, 'onmyo');
+  assert.equal(g.trash.filter(c => c === 'sechie').length, 1, '御前で2回使っても廃棄は1回、獲得は2回');
+  assert.ok(g.ps[p].discard.includes('ichi') && g.ps[p].discard.includes('onmyo'));
+});
+
+test('密偵: 自分から順に、山札の一番上を捨てるか戻すか決める', () => {
+  const { g, p, o } = fresh(2, ['mittei']);
+  g.ps[p].deck = ['kin', 'ta', 'zeni'];
+  g.ps[o].deck = ['gin', 'kin'];
+  play(g, p, 'mittei');
+  assert.match(g.prompt.title, /あなた|P0/);
+  choose(g, p, 'discard'); // 自分の ta
+  choose(g, p, 'discard'); // 相手の kin
+  assert.ok(g.ps[p].discard.includes('ta'));
+  assert.ok(g.ps[o].discard.includes('kin'));
+});
+
+test('盗賊: 相手の財宝を奪って自分のものに', () => {
+  const { g, p, o } = fresh(2, ['tozoku']);
+  g.ps[o].deck = ['zeni', 'kin', 'ta'];
+  play(g, p, 'tozoku');
+  choose(g, p, 'kin');
+  choose(g, p, 'yes');
+  assert.ok(g.ps[p].discard.includes('kin'));
+  assert.ok(g.ps[o].discard.includes('ta'));
+  assert.ok(!g.trash.includes('kin'));
 });

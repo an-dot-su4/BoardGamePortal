@@ -26,6 +26,12 @@ const AI = {
   tera: { value: 3 },
   kekkai: { value: 3 },
   teien: { value: 0 },
+  sessho: { value: 3 },
+  kokushi: { value: 4 },
+  sechie: { value: 3 },
+  mittei: { chain: true, value: 3 },
+  tozoku: { value: 2 },
+  kentoushi: { value: 5 },
   // 鎌倉
   monomi: { chain: true, value: 3 },
   shugo: { chain: true, value: 2 },
@@ -247,6 +253,7 @@ function answerPrompt(g, pid, strategy) {
     return list.sort((a, b) => (card === 'machiisha' ? trashScore(g, pid, b) - trashScore(g, pid, a) : 0) || keepScore(a) - keepScore(b))[0];
   }
   if (pr.kind === 'list' && card === '_order') return cands.sort((a, b) => keepScore(a) - keepScore(b))[0]; // 要らない札を下に
+  if (pr.kind === 'list' && card === 'tozoku') return cands.sort((a, b) => (CARDS[b].coin ?? 0) - (CARDS[a].coin ?? 0))[0];
   if (pr.kind === 'list' && card === 'bantou') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0];
   if (pr.kind === 'list' && card === 'kabuki') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0]; // 相手の一番良い札を捨てさせる
   if (pr.kind === 'list' && card === 'yakiuchi') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0]; // 相手の一番良い札
@@ -261,6 +268,13 @@ function answerPrompt(g, pid, strategy) {
     if (card === 'shoko') return g.turn.actions > 0 ? 'keep' : 'aside';
     if (card === 'ikkou') return 'yes';
     if (card === 'takagari') return 'shouen';
+    if (card === 'sessho') return 'no';
+    if (card === 'mittei') {
+      const { who, card: seen } = pr.then.data;
+      const good = keepScore(seen) >= 2 || isType(seen, 'action');
+      return (who === pid) === good ? 'back' : 'discard';
+    }
+    if (card === 'tozoku') return pr.then.data.card === 'zeni' ? 'no' : 'yes';
     if (card === 'machiisha') {
       const id = pr.then.data.card;
       return trashScore(g, pid, id) > 0 ? 'trash' : keepScore(id) <= 1 ? 'discard' : 'back';
