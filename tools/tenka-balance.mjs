@@ -12,12 +12,13 @@ for (const c of T.KINGDOM) {
   let wins = 0;
   let ties = 0;
   for (let i = 0; i < N; i++) {
-    const rng = seededRng(i * 7919 + c.id.length);
-    // 王国はその札＋同じ時代からランダム（その札が必ず入るようにおすすめなしで作り、入れ替える）
-    const g = T.setup([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], rng, { sets: [c.set], bans: [] });
-    if (!g.kingdom.includes(c.id)) {
-      g.supply[c.id] = T.CARDS[c.id].types.includes('victory') ? 8 : 10;
-      g.kingdom[0] = c.id;
+    // 王国はその札＋同じ時代からランダム（その札が入る王国が出るまで作り直す。混ぜた山や避難所も正しく準備される）
+    let rng;
+    let g;
+    for (let k = 0; ; k++) {
+      rng = seededRng(i * 7919 + c.id.length + k * 104729);
+      g = T.setup([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], rng, { sets: [c.set], bans: [] });
+      if (g.kingdom.includes(c.id)) break;
     }
     const favId = i % 2 ? 'a' : 'b';
     const bots = { [favId]: fav, [favId === 'a' ? 'b' : 'a']: money };
