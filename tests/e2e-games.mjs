@@ -1,6 +1,6 @@
 // 追加ゲームのブラウザ通し確認（?local=1 で複数タブ）
 //   node tests/e2e-games.mjs [ゲームID...]   … 省略すると全部
-//   SHOTS=dir で各ゲームのスクリーンショットを保存、MOBILE=1 でスマホ幅（390px）
+//   SHOTS=dir で各ゲームのスクリーンショットを保存、MOBILE=1 でスマホ幅（390px）、LANDSCAPE=1 でスマホの横画面（844×390）
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
@@ -41,10 +41,11 @@ async function waitForServer() {
 }
 
 // gameName のゲームで部屋を作り、names の人数でゲーム開始まで進める
-const VIEWPORT = process.env.MOBILE ? { width: 390, height: 844 } : { width: 1100, height: 900 };
+const VIEWPORT = process.env.LANDSCAPE ? { width: 844, height: 390 } : process.env.MOBILE ? { width: 390, height: 844 } : { width: 1100, height: 900 };
 
 async function openGame(gameName, names, viewport = VIEWPORT, beforeStart = null) {
-  const context = await browser.newContext({ viewport });
+  const touch = process.env.MOBILE || process.env.LANDSCAPE ? { hasTouch: true, isMobile: true } : {};
+  const context = await browser.newContext({ viewport, ...touch });
   const pages = [];
   for (const name of names) {
     const page = await context.newPage();

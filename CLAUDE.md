@@ -86,6 +86,9 @@ export function createUI(root, api) {   // api.send(action), api.toast(text), ap
 - `art.js` と `art/<時代>.js` が SVG のイラスト。描いていない札は名前の一文字の仮の絵になる。一覧は `gallery.html`。
 - バランス確認: `node tools/tenka-balance.mjs [試合数]`（各王国カードを軸にした CPU 対 お金だけの CPU の勝率）。
   組み合わせ前提の札（寺・御前・里など）は単体では低く出るのが正常（ドミニオンの同じ札も同様）。
+- 天下札には**スマホ表示**がある（`ui.js` の `renderMobile`。画面いっぱいの3段: 上部バー／供給だけスクロール／選択・操作ボタン・手札）。
+  PC表示（`renderPC`）とは☰メニュー・「📱スマホ表示」ボタンで切り替え、`tenkaLayout` に保存。auto はスマホ幅・タッチ端末・低い横画面でスマホ表示。
+  画面を変えたら `MOBILE=1`（縦）と `LANDSCAPE=1`（横 844×390）の e2e のスクショも見る。再描画でスクロール位置を保つため、スクロールする要素には `dataset.scrollKey` を付ける。
 - スマホ幅（390px 前後）で崩れないこと。共通のクラス（`.table` `.seats` `.seat` `.hand` `.result-box` `.game-actions` など）は `css/style.css` にある。
 
 ## テスト・確認

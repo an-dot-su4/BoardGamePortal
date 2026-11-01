@@ -376,9 +376,15 @@ button.tk-card:hover { transform: translateY(-2px); }
 .tk-pill-victory { background: #4f8a3a; }
 .tk-pill-duration { background: #d9822b; }
 .tk-prompt { border: 2px solid #ffd36b; }
-.tk-zoom { position: fixed; inset: 0; background: rgb(0 0 0 / 0.6); display: grid; place-items: center; z-index: 30; padding: 16px; }
-.tk-zoom-inner { display: grid; gap: 10px; justify-items: center; }
-.tk-zoom-inner .tk-card { width: min(280px, 80vw); }
+.tk-zoom { position: fixed; inset: 0; background: rgb(0 0 0 / 0.6); display: flex; z-index: 30; padding: 16px; overflow-y: auto; overscroll-behavior: contain; }
+.tk-zoom-inner { display: grid; gap: 10px; justify-items: center; margin: auto; }
+/* 画面が低くてもボタンまで入るよう、カードの幅を高さからも決める（カードは幅のおよそ1.6倍の高さ） */
+.tk-zoom-inner .tk-card { width: min(280px, 80vw, calc((100dvh - 150px) / 1.6)); min-width: 170px; }
+@media (orientation: landscape) and (max-height: 520px) {
+  /* 横画面: カードを左、説明とボタンを右に並べる */
+  .tk-zoom-inner { grid-template-columns: auto minmax(160px, 260px); align-items: center; justify-items: start; column-gap: 16px; }
+  .tk-zoom-inner > .tk-card { grid-row: 1 / span 6; width: min(220px, calc((100dvh - 32px) / 1.6)); }
+}
 .tk-zoom-inner .tk-text { font-size: 0.95rem; }
 .tk-set-check { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
 .tk-ban summary { cursor: pointer; font-weight: 700; }
@@ -386,4 +392,61 @@ button.tk-card:hover { transform: translateY(-2px); }
 @media (max-width: 480px) {
   .tk-mini { width: 92px; }
   .tk-hand .tk-card { width: 132px; }
+}
+
+/* ---- 天下札 スマホ表示（画面いっぱい・中段だけスクロール） ---- */
+html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: none; }
+.tk-m {
+  position: fixed; inset: 0; z-index: 20; height: 100dvh; border-radius: 0; padding: 0; min-height: 0;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.tk-m-top { display: flex; align-items: center; gap: 6px; padding: 6px 8px; padding-top: max(6px, env(safe-area-inset-top)); background: rgb(0 0 0 / 0.25); }
+.tk-m-top .tk-status { flex: 1; gap: 4px 6px; font-size: 0.82rem; }
+.tk-m-top .tk-stat { padding: 1px 8px; font-size: 0.8rem; }
+.tk-m-top .tk-stat b { font-size: 0.95rem; }
+.tk-m-menu-btn { flex: none; min-width: 44px; padding: 6px 10px; }
+.tk-m-menu {
+  position: absolute; top: 52px; right: 6px; left: 6px; z-index: 25; max-height: calc(100dvh - 70px); overflow-y: auto;
+  background: var(--surface); color: var(--text); border-radius: 12px; padding: 10px; box-shadow: 0 6px 24px rgb(0 0 0 / 0.4); display: grid; gap: 8px;
+}
+.tk-m-menu .muted { color: var(--muted); }
+.tk-m-main { overflow-y: auto; overscroll-behavior: contain; padding: 6px 6px 10px; display: grid; gap: 8px; align-content: start; }
+.tk-m-bottom {
+  max-height: 62dvh; overflow-y: auto; overscroll-behavior: contain; padding: 4px 6px; padding-bottom: max(4px, env(safe-area-inset-bottom));
+  background: rgb(0 0 0 / 0.28); border-top: 1px solid rgb(255 255 255 / 0.15);
+}
+.tk-m .tk-supply { padding: 4px; }
+.tk-m .tk-supply .tk-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 2px; }
+.tk-m .tk-supply .tk-mini { width: auto; padding: 3px; border-width: 2px; }
+.tk-m .tk-mini .tk-name { font-size: 0.64rem; letter-spacing: 0; padding: 1px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-m .tk-mini .tk-foot { font-size: 0.55rem; }
+.tk-m .tk-mini .tk-type { display: none; }
+.tk-m .tk-mini-text { font-size: 0.6rem; }
+.tk-m .tk-row-title { font-size: 0.75rem; margin-bottom: 2px; flex-wrap: wrap; }
+.tk-m .seats { gap: 4px; margin: 0; }
+.tk-m .seat { min-width: 0; padding: 4px 8px; font-size: 0.85rem; }
+.tk-m-log { max-height: none; }
+.tk-m .tk-prompt { margin: 2px 0 6px; padding: 8px; gap: 6px; }
+.tk-m .tk-prompt .tk-row { flex-wrap: nowrap; overflow-x: auto; gap: 6px; }
+.tk-m .tk-prompt .tk-mini { width: 84px; flex: none; }
+.tk-m .game-actions { gap: 6px; margin: 2px 0 4px; }
+.tk-m .game-actions .btn { padding: 8px 12px; }
+.tk-m .game-actions > .small { display: none; }
+.tk-m .tk-hand { gap: 6px; padding: 4px 2px 6px; }
+.tk-m .tk-hand .tk-card { width: 116px; padding: 4px; border-width: 3px; gap: 2px; }
+.tk-m .tk-hand .tk-name { font-size: 0.78rem; letter-spacing: 0.02em; }
+.tk-m .tk-hand .tk-text { font-size: 0.64rem; min-height: 0; line-height: 1.35; }
+.tk-m .tk-hand .tk-foot .tk-set, .tk-m .tk-hand .tk-foot .tk-type { display: none; }
+.tk-m-back { position: fixed; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 20; box-shadow: 0 4px 16px rgb(0 0 0 / 0.35); }
+.tk-layout-btn { padding: 4px 10px; font-size: 0.8rem; margin-left: auto; }
+@media (orientation: landscape) and (max-height: 520px) {
+  /* 横画面: 左に供給、右に上部バー・選択・ボタン・手札 */
+  .tk-m { grid-template-columns: minmax(0, 1fr) minmax(320px, 46%); grid-template-rows: auto minmax(0, 1fr); }
+  .tk-m-top { grid-column: 2; grid-row: 1; }
+  .tk-m-main { grid-column: 1; grid-row: 1 / span 2; }
+  .tk-m-bottom { grid-column: 2; grid-row: 2; max-height: none; border-top: none; border-left: 1px solid rgb(255 255 255 / 0.15); }
+  .tk-m .tk-supply .tk-row { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); }
+  .tk-m .tk-hand .tk-art { display: none; }
+  .tk-m .tk-hand .tk-card { width: 104px; }
+  .tk-m-menu { left: auto; width: min(420px, 60vw); }
 }

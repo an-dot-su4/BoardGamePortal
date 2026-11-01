@@ -1,10 +1,15 @@
 // 天下札の画面
 import { h } from '../../js/util.js';
+import { load, save } from '../../js/storage.js';
 import { CARDS, KINGDOM, PRESETS, SETS } from './cards/index.js';
 import { cardEl, TYPE_LABEL } from './cardview.js';
 
 const BASIC_ROW = ['zeni', 'gin', 'kin', 'ohban', 'ta', 'shouen', 'kuni', 'gosho', 'tatari'];
 const isType = (id, t) => CARDS[id].types.includes(t);
+
+// 表示の切り替え（'auto' / 'mobile' / 'pc'）。auto はスマホ幅かタッチ操作の端末ならスマホ表示
+const LAYOUT_KEY = 'tenkaLayout';
+const AUTO_MOBILE = '(max-width: 700px), (pointer: coarse), (orientation: landscape) and (max-height: 520px)';
 
 // ---- ロビーの設定（ホストだけ変更できる）----
 
@@ -75,6 +80,21 @@ export function createUI(root, api) {
   let picked = []; // 手札から選んでいる札（選択を求められたとき）
   let zoomed = null; // 拡大表示中の札
   let overpay = 0; // 棟梁などで多く払う額
+  let layout = load(LAYOUT_KEY, 'auto');
+  let menuOpen = false; // スマホ表示の☰メニュー
+  let peek = false; // スマホ表示を一時的に隠して部屋の画面（チャット）を見ている
+  const mq = typeof matchMedia === 'function' ? matchMedia(AUTO_MOBILE) : null;
+  const mobile = () => layout === 'mobile' || (layout === 'auto' && !!mq?.matches);
+  const onMedia = () => view && render();
+  mq?.addEventListener?.('change', onMedia);
+
+  function setLayout(next) {
+    layout = next;
+    save(LAYOUT_KEY, next);
+    menuOpen = false;
+    peek = false;
+    render();
+  }
 
   const nameOf = id => view.players.find(p => p.id === id)?.name ?? '?';
 
@@ -82,12 +102,32 @@ export function createUI(root, api) {
     api.send(action);
   }
 
+  // 再描画しても、スクロールしていた位置（手札の列・スマホ表示の中段など）を保つ
+  function keepScroll(draw) {
+    const pos = {};
+    for (const el of root.querySelectorAll('[data-scroll-key]')) pos[el.dataset.scrollKey] = [el.scrollTop, el.scrollLeft];
+    const y = window.scrollY;
+    draw();
+    for (const el of root.querySelectorAll('[data-scroll-key]')) {
+      const p = pos[el.dataset.scrollKey];
+      if (p) [el.scrollTop, el.scrollLeft] = p;
+    }
+    if (!mobile() && window.scrollY !== y) window.scrollTo(0, y);
+  }
+
   function render() {
+    const pr = view.prompt;
+    if (!pr || pr.kind !== 'hand') picked = [];
+    const m = mobile();
+    document.documentElement.classList.toggle('tk-m-open', m && !peek);
+    keepScroll(() => (m ? renderMobile() : renderPC()));
+  }
+
+  function renderPC() {
     const me = view.me;
     const t = view.turn;
     const myTurn = view.phase === 'play' && t && t.p === me && !view.waitingFor;
     const pr = view.prompt;
-    if (!pr || pr.kind !== 'hand') picked = [];
 
     root.replaceChildren(
       h('div', { class: 'table tk-table' },
@@ -107,16 +147,67 @@ export function createUI(root, api) {
     );
   }
 
-  function statusBar(myTurn) {
+  // スマホ表示: 画面いっぱいに 上部バー／供給（ここだけスクロール）／選択・操作ボタン・手札 の3段
+  function renderMobile() {
+    const me = view.me;
     const t = view.turn;
-    if (!t) return h('strong', {}, '🏯 終了');
-    const phase = t.phase === 'action' ? '行動フェーズ' : '購入フェーズ';
+    const myTurn = view.phase === 'play' && t && t.p === me && !view.waitingFor;
+    const pr = view.prompt;
+    if (peek) {
+      root.replaceChildren(
+        h('button', { class: 'btn primary tk-m-back', type: 'button', onclick: () => { peek = false; render(); } }, '🎴 ゲームに戻る'),
+      );
+      return;
+    }
+    const menu = menuOpen
+      ? h('div', { class: 'tk-m-menu' },
+          h('div', { class: 'game-actions' },
+            h('button', { class: 'btn', type: 'button', onclick: () => setLayout('pc') }, '🖥 PC表示にする'),
+            h('button', { class: 'btn', type: 'button', onclick: () => { peek = true; menuOpen = false; render(); } }, '💬 部屋の画面（チャット）'),
+            h('button', { class: 'btn', type: 'button', onclick: () => { menuOpen = false; render(); } }, '閉じる'),
+          ),
+          h('details', {},
+            h('summary', { class: 'small' }, 'ルール'),
+            h('ol', { class: 'small' }, api.rules.map(r => h('li', {}, r))),
+          ),
+          h('div', { class: 'small' }, '最近の出来事'),
+          h('div', { class: 'log' }, view.log.slice().reverse().map(l => h('div', { class: 'small muted' }, l))),
+        )
+      : null;
+    root.replaceChildren(
+      h('div', { class: 'tk-m table' },
+        h('header', { class: 'tk-m-top' },
+          statusBar(myTurn, true),
+          h('button', { class: 'btn tk-m-menu-btn', type: 'button', 'aria-label': 'メニュー', onclick: () => { menuOpen = !menuOpen; render(); } }, menuOpen ? '✕' : '☰'),
+        ),
+        menu,
+        h('div', { class: 'tk-m-main', dataset: { scrollKey: 'main' } },
+          view.phase === 'over' ? resultBox() : null,
+          supplyBox(myTurn),
+          playersBox(),
+          h('div', { class: 'log tk-m-log' }, view.log.slice(-4).reverse().map(l => h('div', { class: 'small muted' }, l))),
+        ),
+        h('div', { class: 'tk-m-bottom', dataset: { scrollKey: 'bottom' } },
+          pr ? promptBox(pr) : null,
+          me ? handBox(myTurn) : h('p', { class: 'muted' }, '👀 観戦中です'),
+        ),
+      ),
+      ...(zoomed ? [zoomBox(myTurn)] : []),
+    );
+  }
+
+  function statusBar(myTurn, compact = false) {
+    const t = view.turn;
+    const toggle = compact ? null : h('button', { class: 'btn tk-layout-btn', type: 'button', onclick: () => setLayout('mobile') }, '📱 スマホ表示');
+    if (!t) return h('div', { class: 'tk-status' }, h('strong', {}, '🏯 終了'), toggle);
+    const phase = t.phase === 'action' ? (compact ? '行動' : '行動フェーズ') : compact ? '購入' : '購入フェーズ';
     return h('div', { class: 'tk-status' },
       h('strong', {}, myTurn ? `🟡 あなたの手番（${phase}）` : `${nameOf(t.p)} の手番（${phase}）`),
       h('span', { class: 'tk-stat' }, '行動 ', h('b', {}, t.actions)),
       h('span', { class: 'tk-stat' }, '購入 ', h('b', {}, t.buys)),
       h('span', { class: 'tk-stat tk-coins' }, '文 ', h('b', {}, t.coins)),
       view.waitingFor ? h('span', { class: 'small' }, `⏳ ${nameOf(view.waitingFor)} の選択を待っています`) : null,
+      toggle,
     );
   }
 
@@ -225,7 +316,7 @@ export function createUI(root, api) {
       h('div', { class: 'tk-row-title small' }, `あなたの手札（${view.hand.length}枚）`, h('span', { class: 'muted' }, `山札${me.deck}・捨て札${me.discard}・全${me.total}枚`)),
       view.myNative.length ? h('div', { class: 'small' }, `隠れ里のマット（自分だけ見える）: ${view.myNative.map(id => CARDS[id].name).join('・')}`) : null,
       actions,
-      h('div', { class: 'tk-hand' }, cards),
+      h('div', { class: 'tk-hand', dataset: { scrollKey: 'hand' } }, cards),
     );
   }
 
@@ -330,6 +421,8 @@ export function createUI(root, api) {
       render();
     },
     destroy() {
+      mq?.removeEventListener?.('change', onMedia);
+      document.documentElement.classList.remove('tk-m-open');
       root.replaceChildren();
     },
   };
