@@ -52,6 +52,23 @@ const AI = {
   kinkaku: { value: 8 },
   dosou: { chain: true, value: 6 },
   shichifuku: { value: 5 },
+  // 戦国
+  ochimusha: { chain: false, value: 0 },
+  yakedera: { value: 0 },
+  arechi: { value: 0 },
+  haison: { chain: true, value: 0 },
+  rakuichi: { chain: true, value: 4 },
+  katanagari: { chain: true, value: 4 },
+  yamashiro: { chain: true, value: 5 },
+  randori: { value: 6 },
+  gekokujo: { value: 4 },
+  chigyou: { value: 0 },
+  kobutsu: { chain: true, value: 6 },
+  nobushi: { chain: true, value: 6 },
+  ikkou: { value: 8 },
+  yakiuchi: { value: 5 },
+  shinobi: { value: 6 },
+  takagari: { value: 7 },
 };
 
 const cost = id => CARDS[id].cost;
@@ -90,6 +107,7 @@ function useful(g, pid, id) {
   if (id === 'tera') return hand.some(c => trashScore(g, pid, c) > 0);
   if (id === 'kanekashi') return hand.includes('zeni');
   if (id === 'kanayama') return hand.includes('zeni') || hand.includes('gin');
+  if (id === 'gekokujo') return hand.some(c => isType(c, 'action') && c !== 'gekokujo');
   if (id === 'gozen' || id === 'shichifuku') return hand.filter(c => isType(c, 'action') && c !== 'gozen' && c !== 'shichifuku').length > 0;
   if (id === 'zouei') return hand.some(c => c !== 'zouei');
   // 執権は手札を全部捨てるので、お金の少ない手札のときだけ
@@ -108,7 +126,7 @@ export function chooseAction(g, pid) {
 function favorites(g, pid, strategy) {
   if (strategy === 'money') return [];
   if (strategy?.favorites) return strategy.favorites.filter(id => g.kingdom.includes(id));
-  const ks = g.kingdom.filter(id => AI[id] && !isType(id, 'victory'));
+  const ks = g.kingdom.filter(id => AI[id] && AI[id].value > 0 && !isType(id, 'victory'));
   // プレイヤーごとに少しずつ好みを変える
   const salt = [...pid].reduce((a, ch) => a + ch.charCodeAt(0), 0);
   const terminals = ks.filter(id => !AI[id].chain).sort((a, b) => AI[b].value - AI[a].value + (((salt + a.length) % 3) - 1));
@@ -150,6 +168,8 @@ export function chooseBuy(g, pid, strategy = 'normal') {
 // 廃棄したい度合い（正なら捨てたい）
 function trashScore(g, pid, id) {
   if (id === 'tatari') return 10;
+  if (isType(id, 'ruins')) return 8;
+  if (id === 'yamashiro') return 7; // 廃棄しても手札に戻る
   if (id === 'ta') return g.supply.kuni > 4 ? 6 : 0;
   if (id === 'zeni') return count(g, pid, 'gin') + count(g, pid, 'kin') * 2 >= 3 ? 4 : 0;
   return 0;
@@ -158,6 +178,7 @@ function trashScore(g, pid, id) {
 // 持っておきたい度合い（低いものから捨てる）
 function keepScore(id) {
   if (isType(id, 'curse')) return -10;
+  if (isType(id, 'ruins')) return -3;
   if (isType(id, 'victory') && !isType(id, 'action')) return -5;
   if (isType(id, 'treasure')) return CARDS[id].coin ?? 0;
   return 1 + (AI[id]?.value ?? 1) / 2;
@@ -175,6 +196,7 @@ function bestGain(g, pid, pr, strategy) {
     if (id === 'gin') return 30;
     if (id === 'shouen') return g.supply.kuni <= 4 ? 45 : 5;
     if (id === 'tatari') return -100;
+    if (id === 'ruins') return -50;
     if (id === 'ta') return g.supply.kuni <= 2 ? 20 : -10;
     if (id === 'zeni') return -5;
     return cost(id);
@@ -194,6 +216,9 @@ function answerPrompt(g, pid, strategy) {
     const junk = cands.filter(id => keepScore(id) <= 0).sort((a, b) => keepScore(a) - keepScore(b));
     return junk.length >= 2 ? junk.slice(0, 2) : [];
   }
+  if (pr.kind === 'list' && card === 'yakiuchi') return cands.sort((a, b) => keepScore(b) - keepScore(a))[0]; // 相手の一番良い札
+  if (pr.kind === 'list' && card === 'shinobi' && step === 'steal') return cands.sort((a, b) => cost(b) - cost(a))[0];
+  if (pr.kind === 'list' && card === 'shinobi') return cands.sort((a, b) => keepScore(a) - keepScore(b))[0];
   if (pr.kind === 'list') {
     // 見張り: 廃棄は捨てたい札、捨て札は持っておきたくない札から
     if (step === 'trash') return cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b))[0];
@@ -201,6 +226,8 @@ function answerPrompt(g, pid, strategy) {
   }
   if (pr.kind === 'option') {
     if (card === 'shoko') return g.turn.actions > 0 ? 'keep' : 'aside';
+    if (card === 'ikkou') return 'yes';
+    if (card === 'takagari') return 'shouen';
     return pr.options[0].value;
   }
 
@@ -215,6 +242,8 @@ function answerPrompt(g, pid, strategy) {
   else if (card === 'tera') picked = pickBy(id => trashScore(g, pid, id), id => trashScore(g, pid, id) > 0);
   else if (card === 'kanekashi') picked = cands.slice(0, 1);
   else if (card === 'gozen' || card === 'shichifuku') picked = [chooseActionFrom(cands.filter(id => id !== 'gozen' && id !== 'shichifuku')) ?? cands[0]].slice(0, 1);
+  else if (card === 'katanagari' || card === 'kobutsu') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
+  else if (card === 'gekokujo') picked = cands.filter(id => id !== 'gekokujo').sort((a, b) => (AI[a]?.value ?? 1) - (AI[b]?.value ?? 1)).slice(0, 1);
   else if (card === 'kuramoto') picked = cands.filter(id => keepScore(id) < 0);
   else if (card === 'jisha') picked = cands.sort((a, b) => trashScore(g, pid, b) - trashScore(g, pid, a) || keepScore(a) - keepScore(b)).slice(0, 1);
   else if (card === 'shugo') {

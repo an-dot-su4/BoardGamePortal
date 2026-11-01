@@ -318,6 +318,7 @@ button.tk-card:hover { transform: translateY(-2px); }
 .tk-attack { --frame: #c0392b; --paper: #f7e1d8; --band: #8e2418; }
 .tk-reaction { --frame: #2f5a99; --paper: #dde7f5; --band: #1f3d6e; }
 .tk-duration { --frame: #d9822b; --paper: #fbe6cf; --band: #9a5310; }
+.tk-ruins { --frame: #7a7a72; --paper: #e8e6de; --band: #4a4a44; }
 .tk-name {
   background: var(--band); color: #fff; font-weight: 800; text-align: center; border-radius: 6px;
   padding: 2px 4px; font-size: 1.05rem; letter-spacing: 0.15em; font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;

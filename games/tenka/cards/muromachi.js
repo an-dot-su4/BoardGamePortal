@@ -50,7 +50,7 @@ export const MUROMACHI = {
           e.fame(fame);
           e.log(`${e.name()}: ${cardName(ids[0])}を寄進して名声+${fame}`);
         }
-        for (const o of e.others()) e.later({ op: 'step', p: e.p, card: 'jisha', step: 'offer', data: {}, target: o });
+        e.later(...e.others().map(o => ({ op: 'step', p: e.p, card: 'jisha', step: 'offer', data: {}, target: o })));
       },
       offer(e) {
         e.ask({ p: e.target, kind: 'hand', min: 0, max: 1, title: '寺社造営: 手札を1枚廃棄してもよい' }, 'otherTrash');
@@ -136,7 +136,7 @@ export const MUROMACHI = {
       sell(e, ids) {
         e.discard(ids);
         e.coins(ids.length);
-        for (const o of e.others()) e.later({ op: 'step', p: e.p, card: 'kuramoto', step: 'offer', data: {}, target: o });
+        e.later(...e.others().map(o => ({ op: 'step', p: e.p, card: 'kuramoto', step: 'offer', data: {}, target: o })));
       },
       offer(e) {
         if (e.hand(e.target).length < 2) return;

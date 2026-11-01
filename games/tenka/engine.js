@@ -55,19 +55,28 @@ export function take(zone, ids) {
   }
 }
 
+// 札を獲得する。戦国の「落武者の山」(ruins) は、混ぜた山の一番上の札になる。戻り値は獲得した札のID（失敗は false）
 export function gain(g, pid, id, to = 'discard') {
   if (!(g.supply[id] > 0)) return false;
   g.supply[id] -= 1;
+  if (id === 'ruins') id = g.ruinsPile.pop();
   const ps = g.ps[pid];
   if (to === 'hand') ps.hand.push(id);
   else if (to === 'deck') ps.deck.push(id);
   else ps.discard.push(id);
-  return true;
+  return id;
 }
 
 export function trashFromHand(g, pid, ids) {
   take(g.ps[pid].hand, ids);
+  trashCards(g, pid, ids);
+}
+
+// 廃棄置き場に置く。廃棄されたときの効果（山城・知行・鷹狩など）があれば、今の処理のあとに実行する
+export function trashCards(g, pid, ids) {
   g.trash.push(...ids);
+  const hooks = ids.filter(id => card(id).steps?.onTrash).map(id => ({ op: 'step', p: pid, card: id, step: 'onTrash', data: {} }));
+  pushOps(g, ...hooks);
 }
 
 export function discardFromHand(g, pid, ids) {
@@ -103,6 +112,8 @@ function effectContext(g, rng, op) {
     coins: n => (g.turn.coins += n),
     gain: (id, who = e.p, to = 'discard') => gain(g, who, id, to),
     trash: (ids, who = e.p) => trashFromHand(g, who, ids),
+    // 手札以外（場・めくった札など）から取り除いた札を廃棄する
+    trashCard: (id, who = e.p) => trashCards(g, who, [id]),
     discard: (ids, who = e.p) => discardFromHand(g, who, ids),
     hand: (who = e.p) => g.ps[who].hand,
     others: () => others(g, e.p),
@@ -114,6 +125,8 @@ function effectContext(g, rng, op) {
       normalizePrompt(g);
     },
     // あとで実行する命令を積む（今の処理が終わってから、積んだ順に実行される）
+    // 注意: 積んだものはスタックの一番上に乗るので、先に積んである命令（e.play・e.attack など）より先に実行される。
+    //       「〜のあとで」にしたいときは、later を先に呼んでから play / attack を呼ぶ
     later: (...ops) => pushOps(g, ...ops),
     step: (step, data = e.data) => pushOps(g, { op: 'step', p: e.p, card: e.card, step, data, target: e.target }),
     // 他の全員に攻撃する（手番順）。対象ごとに steps[step] が e.target 付きで呼ばれる
@@ -206,7 +219,9 @@ export function candidates(g, pr) {
     return Object.keys(g.supply).filter(
       id =>
         g.supply[id] > 0 &&
+        !card(id).notSupply &&
         (pr.maxCost === undefined || costOf(g, id) <= pr.maxCost) &&
+        (pr.exactCost === undefined || costOf(g, id) === pr.exactCost) &&
         (!pr.types || pr.types.some(t => isType(id, t))),
     );
   }

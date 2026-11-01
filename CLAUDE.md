@@ -74,6 +74,8 @@ export function createUI(root, api) {   // api.send(action), api.toast(text), ap
 - ドミニオン風のデッキ構築。効果はドミニオンに寄せるが、名前・説明文・絵はオリジナル（ドミニオンの名称・文章は使わない）。
 - `cards/` に時代ごとのカード定義（`index.js` の `SETS` で `ready: true` の時代だけ選べる）。効果は `engine.js` の命令スタックで処理し、
   選択は `e.ask(...)` で止めて `steps` で続ける（ask はハンドラの最後に呼ぶ）。攻撃は `e.attack(step)`、結界などの守りは自動で公開。
+  `e.later(...)`・`e.step(...)` で積んだ命令は、先に積んだ `e.play`・`e.attack` より**先に**実行される。「〜のあとで」は later を先に呼ぶ。
+  持続札は `next(e)`、廃棄されたときの効果は `steps.onTrash`、場にある間の購入時効果は `whileInPlay.onBuy`。
 - `bot.js` の CPU はゲーム中の対戦相手とシミュレーションの両方で使う。新しいカードには `AI` の目安と、選択の答え方を足す。
 - `art.js` が SVG のイラスト。描いていない札は名前の一文字の仮の絵になる。一覧は `gallery.html`。
 - スマホ幅（390px 前後）で崩れないこと。共通のクラス（`.table` `.seats` `.seat` `.hand` `.result-box` `.game-actions` など）は `css/style.css` にある。

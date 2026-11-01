@@ -90,7 +90,7 @@ export const KAMAKURA = {
         const ps = e.g.ps[e.p];
         if (id) {
           ps.look.splice(ps.look.indexOf(id), 1);
-          e.g.trash.push(id);
+          e.trashCard(id);
           e.log(`${e.name()}: 見張りで${cardName(id)}を廃棄`);
         }
         e.ask({ kind: 'list', cards: ps.look.slice(), min: 1, max: 1, title: '見張り: 捨て札にする札を選ぶ（残りは山札の上へ）' }, 'discard');

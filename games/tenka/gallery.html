@@ -30,7 +30,7 @@
     const missingNote = cards => (cards.some(c => !HAS_ART.has(c.id)) ? 'イラストのない札は仮の絵（名前の一文字）です。' : null);
     const basics = all.filter(c => c.set === 'basic');
     main.append(
-      h('p', { class: 'muted small', style: { margin: 0 } }, '枠の色は種類を表します（行動=茶、財宝=金、勝利点=緑、攻撃=朱、守り=藍、持続=橙、呪い=紫）。'),
+      h('p', { class: 'muted small', style: { margin: 0 } }, '枠の色は種類を表します（行動=茶、財宝=金、勝利点=緑、攻撃=朱、守り=藍、持続=橙、落武者=灰、呪い=紫）。'),
       section('基本カード', missingNote(basics), basics),
       ...SETS.filter(s => s.ready).map(s => {
         const cards = all.filter(c => c.set === s.id).sort((a, b) => a.cost - b.cost);

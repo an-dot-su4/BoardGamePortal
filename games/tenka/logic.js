@@ -73,6 +73,15 @@ export function setup(players, rng = Math.random, options = {}) {
   };
   // 祟りは、祟りを配る札があるときだけ置く
   if (kingdom.some(id => card(id).giver?.includes('tatari'))) supply.tatari = 10 * (n - 1);
+  // 戦国: 戦利品を出す札があれば戦利品の山、落武者を配る札があれば落武者の山（4種を混ぜる）
+  if (kingdom.some(id => card(id).spoils)) supply.senrihin = 15;
+  let ruinsPile = [];
+  if (kingdom.some(id => card(id).ruins)) {
+    const count = 10 * (n - 1);
+    const kinds = ['ochimusha', 'yakedera', 'arechi', 'haison'];
+    ruinsPile = shuffle(Array.from({ length: count }, (_, i) => kinds[i % kinds.length]), rng);
+    supply.ruins = count;
+  }
   // 室町: 王国に室町の札が多いほど、大判と御所が加わりやすい
   const muro = kingdom.filter(id => card(id).set === 'muromachi').length;
   if (muro > 0 && rng() < muro / KINGDOM_SIZE) {
@@ -87,6 +96,7 @@ export function setup(players, rng = Math.random, options = {}) {
     bots: ids.filter((_, i) => players[i].bot),
     kingdom,
     supply,
+    ruinsPile,
     trash: [],
     ps: {},
     stack: [],
@@ -150,7 +160,7 @@ function cleanup(g, rng) {
 }
 
 export function emptyPiles(g) {
-  return Object.keys(g.supply).filter(id => g.supply[id] === 0);
+  return Object.keys(g.supply).filter(id => g.supply[id] === 0 && !card(id).notSupply);
 }
 
 function isGameOver(g) {
@@ -293,6 +303,7 @@ export function view(g, pid) {
     supply: g.supply,
     trashCount: g.trash.length,
     trashTop: g.trash[g.trash.length - 1] ?? null,
+    ruinsTop: g.ruinsPile?.[g.ruinsPile.length - 1] ?? null,
     hand: seated ? g.ps[pid].hand.slice().sort(handOrder) : [],
     prompt: myPrompt,
     waitingFor: pr && pr.p !== pid ? pr.p : null,

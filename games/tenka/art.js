@@ -6,8 +6,9 @@ import { BASIC_ART } from './art/basic.js';
 import { HEIAN_ART } from './art/heian.js';
 import { KAMAKURA_ART } from './art/kamakura.js';
 import { MUROMACHI_ART } from './art/muromachi.js';
+import { SENGOKU_ART } from './art/sengoku.js';
 
-const ART = { ...BASIC_ART, ...HEIAN_ART, ...KAMAKURA_ART, ...MUROMACHI_ART };
+const ART = { ...BASIC_ART, ...HEIAN_ART, ...KAMAKURA_ART, ...MUROMACHI_ART, ...SENGOKU_ART };
 
 // 仮の絵: 札の名前の一文字を、家紋のような丸に描く
 function placeholder(card) {

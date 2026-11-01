@@ -3,11 +3,11 @@ import { h } from '../../js/util.js';
 import { artSvg } from './art.js';
 import { SETS } from './cards/index.js';
 
-export const TYPE_LABEL = { action: '行動', treasure: '財宝', victory: '勝利点', curse: '呪い', attack: '攻撃', reaction: '守り', duration: '持続' };
+export const TYPE_LABEL = { action: '行動', treasure: '財宝', victory: '勝利点', curse: '呪い', attack: '攻撃', reaction: '守り', duration: '持続', ruins: '落武者' };
 
 // 枠の色を決める種類（優先順）
 export function frameType(card) {
-  for (const t of ['curse', 'reaction', 'attack', 'duration', 'treasure', 'victory']) if (card.types.includes(t)) return t;
+  for (const t of ['curse', 'ruins', 'reaction', 'attack', 'duration', 'treasure', 'victory']) if (card.types.includes(t)) return t;
   return 'action';
 }
 

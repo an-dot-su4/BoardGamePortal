@@ -3,7 +3,7 @@ import { h } from '../../js/util.js';
 import { CARDS, KINGDOM, PRESETS, SETS } from './cards/index.js';
 import { cardEl, TYPE_LABEL } from './cardview.js';
 
-const BASIC_ROW = ['zeni', 'gin', 'kin', 'ta', 'shouen', 'kuni', 'tatari'];
+const BASIC_ROW = ['zeni', 'gin', 'kin', 'ohban', 'ta', 'shouen', 'kuni', 'gosho', 'tatari'];
 const isType = (id, t) => CARDS[id].types.includes(t);
 
 // ---- ロビーの設定（ホストだけ変更できる）----
@@ -121,9 +121,10 @@ export function createUI(root, api) {
 
   function supplyBox(myTurn) {
     const pile = id => {
-      const c = CARDS[id];
+      // 落武者の山は、一番上の札を見せる
+      const c = id === 'ruins' && view.ruinsTop ? { ...CARDS[view.ruinsTop], id: 'ruins', name: `落武者の山（${CARDS[view.ruinsTop].name}）` } : CARDS[id];
       const n = view.supply[id];
-      const affordable = myTurn && view.turn.buys > 0 && n > 0 && view.turn.coins >= c.cost && !view.prompt;
+      const affordable = myTurn && view.turn.buys > 0 && n > 0 && view.turn.coins >= c.cost && !view.prompt && !CARDS[id].notSupply;
       const promptPick = view.prompt?.kind === 'supply' && view.prompt.cands.includes(id);
       return cardEl(c, {
         size: 'mini',
@@ -141,6 +142,11 @@ export function createUI(root, api) {
       h('div', { class: 'tk-row-title small' }, '王国', h('span', { class: 'muted' }, '（タップで拡大・購入）')),
       h('div', { class: 'tk-row' }, view.kingdom.map(pile)),
       h('div', { class: 'tk-row' }, BASIC_ROW.filter(id => id in view.supply).map(pile)),
+      // 時代ごとの特別な山（落武者・戦利品など）
+      (() => {
+        const extra = Object.keys(view.supply).filter(id => !view.kingdom.includes(id) && !BASIC_ROW.includes(id));
+        return extra.length ? h('div', { class: 'tk-row' }, extra.map(pile)) : null;
+      })(),
       h('div', { class: 'small muted' }, `廃棄置き場: ${view.trashCount}枚${view.trashTop ? `（一番上: ${CARDS[view.trashTop].name}）` : ''}`),
     );
   }
@@ -251,7 +257,7 @@ export function createUI(root, api) {
   function zoomBox(myTurn) {
     const c = CARDS[zoomed];
     const n = view.supply[zoomed];
-    const canBuy = myTurn && !view.prompt && view.turn.buys > 0 && n > 0 && view.turn.coins >= c.cost;
+    const canBuy = myTurn && !view.prompt && view.turn.buys > 0 && n > 0 && view.turn.coins >= c.cost && !c.notSupply;
     const close = () => {
       zoomed = null;
       render();
