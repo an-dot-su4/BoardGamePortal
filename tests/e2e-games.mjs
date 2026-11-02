@@ -241,6 +241,34 @@ const scenarios = {
     assert.ok(positions.some(t => !t.startsWith('0マス目')), '誰も進んでいない');
   },
 
+  async glico() {
+    // 人2人で、ゴールを50マスにして最後まで（演出つき）
+    const { pages } = await openGame('疾走グリコ', ['あお', 'あか'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="50"])').selectOption('50');
+    });
+    const hands = ['グー', 'チョキ', 'パー'];
+    let shotDone = false;
+    for (let i = 0; i < 80 && !(await has(pages[0], 'text=の勝ち！')); i++) {
+      for (const [k, p] of pages.entries()) {
+        await p.waitForSelector('.gl-hand-btn:not([disabled])', { timeout: 15000 }).catch(() => {});
+        if (await has(p, 'text=の勝ち！')) break;
+        await p.locator('.gl-hand-btn', { hasText: hands[(i + k * (i % 2 ? 1 : 2)) % 3] }).click();
+      }
+      if (!shotDone) {
+        await pages[0].waitForSelector('.gl-die', { timeout: 5000 }).catch(() => {});
+        await shot(pages[0], 'glico-1-roll');
+        shotDone = true;
+      }
+    }
+    await pages[0].waitForSelector('text=の勝ち！', { timeout: 20000 });
+    await shot(pages[0], 'glico-2-goal');
+    await pages[0].getByRole('button', { name: '❓ ヘルプ' }).click();
+    await shot(pages[0], 'glico-3-help');
+    await pages[0].getByRole('button', { name: '閉じる' }).click();
+    const left = await pages[1].locator('.gl-left').allInnerTexts();
+    assert.ok(left.some(t => t.includes('ゴール')), 'ゴールした人がいない');
+  },
+
   async oekaki() {
     const names = ['え', 'が', 'く'];
     const { pages } = await openGame('お絵描き伝言', names);

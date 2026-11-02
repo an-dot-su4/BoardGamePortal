@@ -453,3 +453,65 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .game-links { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 0; }
 .game-links a { color: inherit; font-weight: 700; }
 .tk-m-menu .game-links a { color: var(--accent); }
+
+/* ---- 疾走グリコ ---- */
+.gl-table { display: grid; gap: 10px; padding: 10px; }
+.gl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gl-help-btn { padding: 4px 12px; font-size: 0.85rem; }
+.gl-runners { display: grid; gap: 4px; margin: 6px 0; }
+.gl-runner { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2px 8px; font-size: 0.9rem; }
+.gl-runner.me .gl-runner-name { font-weight: 800; }
+.gl-left { font-weight: 800; }
+.gl-bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: rgb(0 0 0 / 0.25); overflow: hidden; }
+.gl-bar > div { height: 100%; transition: width 0.12s linear; }
+.gl-token { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: #fff; font-size: 0.72rem; font-weight: 800; border: 2px solid #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.4); }
+.gl-board-wrap { max-height: 46vh; overflow-y: auto; border-radius: 10px; }
+.gl-board { display: grid; gap: 3px; max-width: 560px; margin: 0 auto; }
+.gl-cell { position: relative; aspect-ratio: 1; min-width: 0; border-radius: 6px; background: rgb(255 255 255 / 0.85); color: #2b2620; display: grid; place-items: center; font-size: 0.62rem; }
+.gl-cell.event { background: #ffd36b; color: #8a5a00; font-size: 0.85rem; font-weight: 800; }
+.gl-cell.start, .gl-cell.goal { background: #fff; font-weight: 800; font-size: 0.8rem; }
+.gl-num { opacity: 0.75; }
+.gl-tokens { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 1px; }
+.gl-tokens .gl-token { width: 18px; height: 18px; font-size: 0.62rem; border-width: 1.5px; }
+.gl-janken { display: grid; gap: 6px; background: rgb(0 0 0 / 0.22); border-radius: 12px; padding: 8px; }
+.gl-stage { min-height: 128px; display: grid; place-items: center; text-align: center; background: rgb(255 255 255 / 0.08); border-radius: 10px; padding: 6px; }
+.gl-faceoff { display: grid; grid-template-columns: 64px 1fr 64px; align-items: center; gap: 6px; width: 100%; }
+.gl-side { display: grid; justify-items: center; gap: 2px; border-radius: 10px; padding: 4px 0; }
+.gl-side.win { background: rgb(255 211 107 / 0.35); }
+.gl-hand-icon { font-size: 2rem; line-height: 1.1; }
+.gl-hand-icon.shake { animation: gl-shake 0.25s ease-in-out infinite alternate; }
+@keyframes gl-shake { from { transform: translateY(-4px) rotate(-8deg); } to { transform: translateY(4px) rotate(8deg); } }
+.gl-call { font-weight: 800; font-size: 1.1rem; }
+.gl-call.big { font-size: 1.6rem; animation: gl-pop 0.3s ease-out; }
+@keyframes gl-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.gl-result { display: grid; gap: 4px; justify-items: center; }
+.gl-dice { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+.gl-die { width: 30px; height: 30px; border-radius: 7px; background: #fff; color: #2b2620; display: grid; place-items: center; font-weight: 800; box-shadow: 0 2px 0 rgb(0 0 0 / 0.3); }
+.gl-die.rolling { animation: gl-shake 0.12s linear infinite alternate; }
+.gl-die.mod { background: #ffd36b; }
+.gl-total { font-size: 0.95rem; }
+.gl-total b { font-size: 1.3rem; }
+.gl-mods { color: #ffd36b; }
+.gl-gain { background: #ffd36b; color: #5a3a00; font-weight: 800; border-radius: 8px; padding: 2px 10px; animation: gl-pop 0.3s ease-out; }
+.gl-slots { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 0.78rem; }
+.gl-slots-name { font-weight: 700; min-width: 6.5em; }
+.gl-slot { border: 1px dashed rgb(255 255 255 / 0.4); border-radius: 999px; padding: 1px 8px; opacity: 0.7; }
+.gl-slot.on { border-style: solid; background: rgb(255 255 255 / 0.9); color: #2b2620; opacity: 1; font-weight: 700; }
+.gl-slot.inst.on { background: #cfe8ff; }
+.gl-hands { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.gl-hand-btn { display: grid; justify-items: center; gap: 0; padding: 6px 2px; border-radius: 12px; border: 3px solid transparent; background: #fff; color: #2b2620; font: inherit; font-weight: 800; cursor: pointer; }
+.gl-hand-btn.picked { border-color: #e8524a; background: #fff3e8; }
+.gl-hand-btn:disabled { opacity: 0.5; cursor: default; }
+.gl-hand-dice { font-size: 0.7rem; font-weight: 600; color: #776d60; }
+.gl-wait { text-align: center; }
+.gl-help { position: fixed; inset: 0; z-index: 30; background: rgb(0 0 0 / 0.55); display: flex; padding: 12px; overflow-y: auto; }
+.gl-help-inner { margin: auto; background: var(--surface); color: var(--text); border-radius: 14px; padding: 14px; max-width: 520px; width: 100%; }
+.gl-help-inner h3, .gl-help-inner h4 { margin: 4px 0; }
+.gl-help-table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+.gl-help-table th, .gl-help-table td { border-bottom: 1px solid var(--line); padding: 4px; text-align: center; }
+@media (max-width: 700px) {
+  /* スマホ: じゃんけんエリアを画面の下に固定し、盤面だけ流れるように */
+  .gl-janken { position: sticky; bottom: 0; z-index: 5; background: #24553f; box-shadow: 0 -4px 12px rgb(0 0 0 / 0.3); }
+  .gl-board-wrap { max-height: none; }
+  .gl-stage { min-height: 112px; }
+}
