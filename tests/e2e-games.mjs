@@ -269,6 +269,26 @@ const scenarios = {
     assert.ok(left.some(t => t.includes('ゴール')), 'ゴールした人がいない');
   },
 
+  async glicoCpu() {
+    // 人1人＋強いCPU（ロビーで強さを選ぶ）で、50マスを最後まで
+    const { pages } = await openGame('疾走グリコ', ['ひと'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="50"])').selectOption('50');
+      await host.locator('select:has(option[value="strong"])').selectOption('strong');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+      await shot(host, 'glico-0-lobby');
+    });
+    const [p] = pages;
+    const hands = ['グー', 'チョキ', 'パー'];
+    for (let i = 0; i < 80 && !(await has(p, 'text=の勝ち！')); i++) {
+      await p.waitForSelector('.gl-hand-btn:not([disabled])', { timeout: 15000 }).catch(() => {});
+      if (await has(p, 'text=の勝ち！')) break;
+      await p.locator('.gl-hand-btn', { hasText: hands[i % 3] }).click();
+      await pause(p, 200);
+    }
+    await p.waitForSelector('text=の勝ち！', { timeout: 20000 });
+  },
+
   async oekaki() {
     const names = ['え', 'が', 'く'];
     const { pages } = await openGame('お絵描き伝言', names);

@@ -3,7 +3,7 @@
 //   下: じゃんけんエリア（見せ合い・スキルスロット・手のボタン）。スマホでは画面の下に固定
 // 演出（じゃんけん→ポン→サイコロ→歩く→スキル獲得）は画面側だけで再生する。view.seq が増えたら再生
 import { h } from '../../js/util.js';
-import { GOALS, HANDS, INST_TURNS, SKILLS } from './logic.js';
+import { CPU_LEVELS, GOALS, HANDS, INST_TURNS, SKILLS } from './logic.js';
 
 const COLS = 10;
 const COLORS = ['#e8524a', '#3b82f6'];
@@ -17,6 +17,13 @@ export function renderOptions(root, options, { editable, onChange }) {
       h('select', { class: 'input', disabled: !editable, onchange: e => onChange({ ...options, goal: Number(e.target.value) }) },
         GOALS.map(n => h('option', { value: n, selected: options.goal === n }, `${n}マス${n === 100 ? '（標準）' : n < 100 ? '（短め）' : '（長め）'}`)),
       ),
+    ),
+    h('div', { class: 'field' },
+      h('label', {}, 'CPUの強さ'),
+      h('select', { class: 'input', disabled: !editable, onchange: e => onChange({ ...options, cpu: e.target.value }) },
+        Object.entries(CPU_LEVELS).map(([id, label]) => h('option', { value: id, selected: options.cpu === id }, label)),
+      ),
+      h('p', { class: 'small muted', style: { margin: '4px 0 0' } }, '「🤖 CPUを追加」で入れたCPUの強さ。人同士のときは関係ありません。強いCPUは、お互いのスキルを見て、相手の出しそうな手を読みます。'),
     ),
   );
 }
@@ -34,6 +41,22 @@ export function createUI(root, api) {
   const colorOf = id => COLORS[view.players.findIndex(p => p.id === id)] ?? '#888';
 
   async function play(last) {
+    try {
+      await animate(last);
+    } finally {
+      // 途中で何かあっても、手を選べない状態のまま固まらないように
+      busy = false;
+      if (!destroyed && view) {
+        seenSeq = last.seq;
+        shown = Object.fromEntries(view.players.map(p => [p.id, p.pos]));
+        render();
+      }
+    }
+    // 演出中にもう次が決まっていたら続けて再生
+    if (!destroyed && view.last && view.last.seq !== seenSeq) play(view.last);
+  }
+
+  async function animate(last) {
     busy = true;
     const prev = { ...shown };
     stage = { step: 'jan', last };
@@ -73,13 +96,7 @@ export function createUI(root, api) {
       render();
       if (last.gained) await sleep(1100);
     }
-    busy = false;
-    seenSeq = last.seq;
-    shown = Object.fromEntries(view.players.map(p => [p.id, p.pos]));
     if (stage.step !== 'gain') stage = { step: 'done', last };
-    render();
-    // 演出中にもう次が決まっていたら続けて再生
-    if (view.last && view.last.seq !== seenSeq) play(view.last);
   }
 
   // ---- 部品 ----
@@ -157,7 +174,7 @@ export function createUI(root, api) {
     let center;
     if (st.step === 'jan') center = h('div', { class: 'gl-call big' }, 'じゃんけん…');
     else if (st.step === 'pon') center = h('div', { class: 'gl-call big' }, 'ポン！');
-    else if (st.step === 'draw') center = h('div', { class: 'gl-call big' }, 'あいこ！');
+    else if (last.draw) center = h('div', { class: 'gl-call big' }, 'あいこ！'); // あいこ（演出後もそのまま表示）
     else {
       const dice = st.rolling ?? last.final;
       center = h('div', { class: 'gl-result' },

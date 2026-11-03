@@ -27,8 +27,13 @@ export const INST_TURNS = 2; // 瞬間スキルが残る、勝敗のついた回
 
 export const GOALS = [50, 100, 150];
 
+export const CPU_LEVELS = { weak: '弱い（ほぼランダム）', strong: '強い（スキルを読む）' };
+
 export function normalizeOptions(o) {
-  return { goal: GOALS.includes(Number(o?.goal)) ? Number(o.goal) : 100 };
+  return {
+    goal: GOALS.includes(Number(o?.goal)) ? Number(o.goal) : 100,
+    cpu: o?.cpu in CPU_LEVELS ? o.cpu : 'weak',
+  };
 }
 
 const randInt = (rng, lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
@@ -42,17 +47,19 @@ export function placeEvents(goal, rng) {
 
 export function setup(players, rng = Math.random, options = {}) {
   if (players.length !== 2) throw new GameError('疾走グリコは2人で遊びます');
-  const { goal } = normalizeOptions(options);
+  const { goal, cpu } = normalizeOptions(options);
   const ids = players.map(p => p.id);
   return {
     players: ids,
     names: Object.fromEntries(players.map(p => [p.id, p.name])),
     bots: players.filter(p => p.bot).map(p => p.id),
     goal,
+    cpu,
     events: placeEvents(goal, rng),
     pos: Object.fromEntries(ids.map(p => [p, 0])),
     slots: Object.fromEntries(ids.map(p => [p, { perm: null, inst: null }])),
     hands: Object.fromEntries(ids.map(p => [p, null])),
+    history: Object.fromEntries(ids.map(p => [p, []])), // 公開された手（直近12回。強いCPUが相手の癖を読むのに使う）
     rounds: 0, // 勝敗のついた回数
     seq: 0, // じゃんけんを公開した回数（画面の演出用の通し番号）
     last: null,
@@ -72,10 +79,16 @@ const nameOf = (g, pid) => g.names[pid] ?? '?';
 // サイコロを振る。永続スキルでサイコロが変わり、瞬間スキルで出目が変わる。
 // 戻り値: { faces, dice（振った目）, final（補正後の目）, bonus, mods（発動したスキルの説明）, usedPerm, usedInst }
 export function roll(hand, slots, rng) {
+  const { faces, count, usedPerm } = diceSpec(hand, slots);
+  const dice = Array.from({ length: count }, () => faces[Math.floor(rng() * faces.length)]);
+  return { faces, ...score(slots, dice, usedPerm) };
+}
+
+// 勝った手と永続スキルから、振るサイコロ（面と個数）を決める
+function diceSpec(hand, slots) {
   const base = HANDS[hand];
   let faces = base.faces.slice();
   let count = base.count;
-  const mods = [];
   let usedPerm = null;
   const perm = slots.perm ? SKILLS[slots.perm] : null;
   if (perm && perm.hand === hand) {
@@ -83,7 +96,12 @@ export function roll(hand, slots, rng) {
     if (slots.perm === 'omake') faces = faces.map(f => (f === 1 ? 2 : f));
     if (slots.perm === 'itachoco') count += 1;
   }
-  const dice = Array.from({ length: count }, () => faces[Math.floor(rng() * faces.length)]);
+  return { faces, count, usedPerm };
+}
+
+// 振った目に、永続（パイナツプル）と瞬間スキルの補正をかけて合計を出す
+function score(slots, dice, usedPerm) {
+  const mods = [];
   let final = dice.slice();
   if (usedPerm === 'pine') final = final.map(d => d + 2);
   if (usedPerm) mods.push(`${SKILLS[usedPerm].icon}${SKILLS[usedPerm].name}`);
@@ -108,7 +126,36 @@ export function roll(hand, slots, rng) {
     usedInst = inst;
   }
   if (usedInst) mods.push(`${SKILLS[usedInst].icon}${SKILLS[usedInst].name}`);
-  return { faces, dice, final, bonus, mods, usedPerm, usedInst, total: final.reduce((a, b) => a + b, 0) + bonus };
+  return { dice, final, bonus, mods, usedPerm, usedInst, total: final.reduce((a, b) => a + b, 0) + bonus };
+}
+
+// その手で勝ったときの進み（平均・最小）。サイコロの出目をすべて数え上げる（最大 3^6 通り）。強いCPUが使う
+const advanceCache = new Map();
+export function expectedAdvance(hand, slots) {
+  const key = `${hand}|${slots.perm ?? ''}|${slots.inst?.id ?? ''}`;
+  if (advanceCache.has(key)) return advanceCache.get(key);
+  const { faces, count, usedPerm } = diceSpec(hand, slots);
+  let sum = 0;
+  let min = Infinity;
+  let n = 0;
+  const dice = Array(count);
+  const walk = i => {
+    if (i === count) {
+      const t = score(slots, dice, usedPerm).total;
+      sum += t;
+      min = Math.min(min, t);
+      n += 1;
+      return;
+    }
+    for (const f of faces) {
+      dice[i] = f;
+      walk(i + 1);
+    }
+  };
+  walk(0);
+  const result = { mean: sum / n, min };
+  advanceCache.set(key, result);
+  return result;
 }
 
 function resolve(g, rng) {
@@ -118,6 +165,11 @@ function resolve(g, rng) {
   g.seq += 1;
   g.hands = { [a]: null, [b]: null };
   const hands = { [a]: ha, [b]: hb };
+  for (const p of g.players) {
+    const h = (g.history ??= {})[p] ??= [];
+    h.push(hands[p]);
+    if (h.length > 12) h.shift();
+  }
   if (ha === hb) {
     g.last = { seq: g.seq, hands, draw: true };
     log(g, `あいこ（${HANDS[ha].name}）`);
@@ -170,7 +222,7 @@ export function act(g, pid, action, rng = Math.random) {
   if (!g.players.includes(pid)) throw new GameError('観戦中は操作できません');
   if (action?.type === 'restart') {
     if (g.phase !== 'over') throw new GameError('まだゲーム中です');
-    const next = setup(g.players.map(p => ({ id: p, name: g.names[p], bot: g.bots.includes(p) })), rng, { goal: g.goal });
+    const next = setup(g.players.map(p => ({ id: p, name: g.names[p], bot: g.bots.includes(p) })), rng, { goal: g.goal, cpu: g.cpu });
     Object.assign(g, next);
     return;
   }
@@ -205,15 +257,62 @@ export function view(g, pid) {
   };
 }
 
-// CPU: 手はほぼランダム。グーをやや多めに、持っている永続スキルの手を少し多めに出す
+// CPU。ロビーの設定で強さを選ぶ
+//   弱い: 手はほぼランダム。グーをやや多めに、持っている永続スキルの手を少し多めに出す
+//   強い: 双方のスキルから「勝ったら何マス進むか」を計算し、相手の出しそうな手を読んで迎え撃つ（読み切られないようランダムも混ぜる）
 export function bot(g, pid, rng = Math.random) {
   if (g.phase !== 'play' || g.hands[pid]) return null;
+  if (g.cpu === 'strong') return { type: 'hand', hand: pick(strongWeights(g, pid), rng) };
   const w = { rock: 0.4, scissors: 0.3, paper: 0.3 };
   const perm = g.slots[pid].perm;
   if (perm) w[SKILLS[perm].hand] += 0.15;
+  return { type: 'hand', hand: pick(w, rng) };
+}
+
+function pick(w, rng) {
   let x = rng() * (w.rock + w.scissors + w.paper);
   for (const h of ['rock', 'scissors', 'paper']) {
-    if ((x -= w[h]) < 0) return { type: 'hand', hand: h };
+    if ((x -= w[h]) < 0) return h;
   }
-  return { type: 'hand', hand: 'paper' };
+  return 'paper';
+}
+
+const HAND_IDS = ['rock', 'scissors', 'paper'];
+const LOSES_TO = { rock: 'paper', scissors: 'rock', paper: 'scissors' }; // その手に勝つ手
+
+// 1回勝ったときの価値（ゴールに届くなら大きく、届くかもしれないなら少し上乗せ）
+function winValue(adv, left) {
+  if (adv.min >= left) return 100;
+  if (adv.mean >= left) return adv.mean + 15;
+  return adv.mean;
+}
+
+// 強いCPUの手の出しやすさ。テストでも使う
+export function strongWeights(g, pid, { temp = 3, random = 0.2 } = {}) {
+  const opp = g.players.find(p => p !== pid);
+  const myLeft = g.goal - g.pos[pid];
+  const oppLeft = g.goal - g.pos[opp];
+  const mine = Object.fromEntries(HAND_IDS.map(h => [h, winValue(expectedAdvance(h, g.slots[pid]), myLeft)]));
+  const theirs = Object.fromEntries(HAND_IDS.map(h => [h, winValue(expectedAdvance(h, g.slots[opp]), oppLeft)]));
+  // 相手は、勝ったときに大きく進める手を出しやすいと読む
+  const softmax = v => {
+    const m = Math.max(...HAND_IDS.map(h => v[h]));
+    const e = Object.fromEntries(HAND_IDS.map(h => [h, Math.exp((v[h] - m) / temp)]));
+    const z = HAND_IDS.reduce((a, h) => a + e[h], 0);
+    return Object.fromEntries(HAND_IDS.map(h => [h, e[h] / z]));
+  };
+  // 相手の手の予想 = スキルからの読み と これまでに出した手の癖（新しいほど重く）を半々に混ぜる
+  const skillP = softmax(theirs);
+  const past = g.history?.[opp] ?? [];
+  const freq = { rock: 1, scissors: 1, paper: 1 };
+  past.forEach((h, i) => (freq[h] += 0.7 + (i / Math.max(1, past.length)) * 0.6));
+  const fz = freq.rock + freq.scissors + freq.paper;
+  const habit = Math.min(0.6, past.length / 10);
+  const oppP = Object.fromEntries(HAND_IDS.map(h => [h, (1 - habit) * skillP[h] + habit * (freq[h] / fz)]));
+  // 自分の手の評価 = 相手が負ける手を出す確率×自分の進み − 相手が勝つ手を出す確率×相手の進み
+  const value = Object.fromEntries(HAND_IDS.map(h => [h, oppP[BEATS[h]] * mine[h] - oppP[LOSES_TO[h]] * theirs[LOSES_TO[h]]]));
+  const counterP = softmax(value);
+  // 自分のスキルが生きる手も少し出す（読み合いの材料になる）
+  const ownP = softmax(mine);
+  return Object.fromEntries(HAND_IDS.map(h => [h, (1 - random) * (0.75 * counterP[h] + 0.25 * ownP[h]) + random / 3]));
 }

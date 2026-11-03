@@ -175,3 +175,61 @@ test('CPU 同士で何百試合しても必ず終わる', () => {
   }
   assert.ok(rounds / 300 > 3);
 });
+
+test('CPUの強さの設定: 既定は弱い', () => {
+  assert.equal(G.normalizeOptions({}).cpu, 'weak');
+  assert.equal(G.normalizeOptions({ cpu: 'strong' }).cpu, 'strong');
+  assert.equal(G.normalizeOptions({ cpu: 'god' }).cpu, 'weak');
+  const g = G.setup(makePlayers(2), seededRng(1), { cpu: 'strong' });
+  assert.equal(g.cpu, 'strong');
+  g.phase = 'over';
+  G.act(g, g.players[0], { type: 'restart' }, seededRng(1));
+  assert.equal(g.cpu, 'strong', 'もう一度遊んでも設定が残る');
+});
+
+test('勝ったときの平均の進み（全ての出目を数え上げ）', () => {
+  const none = { perm: null, inst: null };
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 0.01, `${a} ≠ ${b}`);
+  near(G.expectedAdvance('rock', none).mean, 12);
+  near(G.expectedAdvance('scissors', none).mean, 11);
+  near(G.expectedAdvance('paper', none).mean, 9);
+  near(G.expectedAdvance('scissors', { perm: null, inst: { id: 'hagure' } }).mean, 11 + 2.444);
+  near(G.expectedAdvance('rock', { perm: 'omake', inst: { id: 'hagure' } }).mean, 14); // おまけ付きグーだと、はぐれ目倍増は発動しない
+  near(G.expectedAdvance('paper', { perm: 'pine', inst: { id: 'oomata' } }).mean, 11 + 5.667);
+  assert.equal(G.expectedAdvance('rock', none).min, 6);
+});
+
+test('強いCPU: 相手のスキルを読んで迎え撃つ', () => {
+  const g = G.setup(makePlayers(2), seededRng(1), { cpu: 'strong' });
+  const [a, b] = g.players;
+  const base = G.strongWeights(g, a);
+  g.slots[b].inst = { id: 'oikaze', left: 2 }; // 相手はグーが強い
+  assert.ok(G.strongWeights(g, a).paper > base.paper + 0.1, 'パーが増える');
+  g.slots[b].inst = null;
+  g.slots[a].perm = 'itachoco';
+  assert.ok(G.strongWeights(g, a).scissors > base.scissors, '自分の板チョコでチョキが増える');
+  // 相手がずっとパーを出していれば、チョキで読む
+  g.slots[a].perm = null;
+  g.history[b] = Array(10).fill('paper');
+  assert.ok(G.strongWeights(g, a).scissors > 0.5);
+});
+
+test('強いCPU: 弱いCPUと同じ手ばかり出す人に勝ち越す', () => {
+  const play = (pick, N = 600) => {
+    let w = 0;
+    for (let s = 0; s < N; s++) {
+      const r = seededRng(700 + s);
+      const g = G.setup(makePlayers(2), r, { cpu: 'strong' });
+      const [a, b] = g.players;
+      while (g.phase === 'play') {
+        G.act(g, a, G.bot(g, a, r), r);
+        if (g.phase === 'play') G.act(g, b, { type: 'hand', hand: pick(g, b, r) }, r);
+      }
+      if (g.winner === a) w++;
+    }
+    return w / N;
+  };
+  const weak = (g, p, r) => G.bot({ ...g, cpu: 'weak' }, p, r).hand;
+  assert.ok(play(weak) > 0.53, '弱いCPUに勝ち越す');
+  for (const h of ['rock', 'scissors', 'paper']) assert.ok(play(() => h, 300) > 0.8, `いつも${h}の人に負けない`);
+});
