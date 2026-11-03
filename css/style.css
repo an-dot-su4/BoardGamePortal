@@ -482,7 +482,8 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .gl-hand-icon.shake { animation: gl-shake 0.25s ease-in-out infinite alternate; }
 @keyframes gl-shake { from { transform: translateY(-4px) rotate(-8deg); } to { transform: translateY(4px) rotate(8deg); } }
 .gl-call { font-weight: 800; font-size: 1.1rem; }
-.gl-call.big { font-size: 1.6rem; animation: gl-pop 0.3s ease-out; }
+.gl-call.big { font-size: 1.6rem; }
+.gl-call.pop, .gl-gain.pop { animation: gl-pop 0.3s ease-out; }
 @keyframes gl-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .gl-result { display: grid; gap: 4px; justify-items: center; }
 .gl-dice { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
@@ -492,7 +493,7 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .gl-total { font-size: 0.95rem; }
 .gl-total b { font-size: 1.3rem; }
 .gl-mods { color: #ffd36b; }
-.gl-gain { background: #ffd36b; color: #5a3a00; font-weight: 800; border-radius: 8px; padding: 2px 10px; animation: gl-pop 0.3s ease-out; }
+.gl-gain { background: #ffd36b; color: #5a3a00; font-weight: 800; border-radius: 8px; padding: 2px 10px; }
 .gl-slots { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 0.78rem; }
 .gl-slots-name { font-weight: 700; min-width: 6.5em; }
 .gl-slot { border: 1px dashed rgb(255 255 255 / 0.4); border-radius: 999px; padding: 1px 8px; opacity: 0.7; }

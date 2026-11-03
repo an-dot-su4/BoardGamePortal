@@ -3,7 +3,7 @@
 import { findGame, GAMES, MODE_LABEL } from '../games/registry.js';
 import { connect, isLocalMode } from './net.js';
 import { Guest, Host } from './host.js';
-import { h, normalizeCode, passHash } from './util.js';
+import { h, normalizeCode, passHash, playersLabel } from './util.js';
 import {
   cleanName, hostRecord, NAME_MAX, PASS_MAX, playerId, playerName, playerPass, rememberRoom, saveHostRecord, setPlayerName, setPlayerPass,
 } from './storage.js';
@@ -184,7 +184,7 @@ function renderHostControls() {
         : null,
       h('button', { class: 'btn primary', type: 'button', disabled: !ok, onclick: () => client.start() }, '▶ ゲーム開始'),
       count < game.minPlayers || count > game.maxPlayers
-        ? h('p', { class: 'small muted' }, `${game.minPlayers}〜${game.maxPlayers}人で開始できます（今 ${count}人）`)
+        ? h('p', { class: 'small muted' }, `${playersLabel(game)}で開始できます（今 ${count}人）`)
         : null,
       room.optionsError ? h('p', { class: 'small', style: { color: 'var(--danger)' } }, room.optionsError) : null,
     ];
@@ -271,7 +271,7 @@ function renderLobby() {
           h('span', { style: { fontSize: '2rem' } }, game.icon),
           h('h2', { style: { margin: 0 } }, game.name),
           h('span', { class: `tag ${game.mode}` }, MODE_LABEL[game.mode]),
-          h('span', { class: 'tag' }, `${game.minPlayers}〜${game.maxPlayers}人`),
+          h('span', { class: 'tag' }, playersLabel(game)),
         ),
         h('p', { style: { margin: 0 } }, game.summary),
         h('ol', { style: { margin: 0, paddingLeft: '1.3em' } }, game.rules.map(r => h('li', {}, r))),

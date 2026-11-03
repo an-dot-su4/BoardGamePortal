@@ -35,6 +35,13 @@ export function createUI(root, api) {
   let stage = null; // 見せ合いスペースの表示 { step, last, rolling? }
   let busy = false; // 演出中
   let help = false;
+  const popped = new Set(); // 出現のアニメーションを再生済みの表示（描き直しのたびに再生してちらつかないように）
+  // その表示が初めて出るときだけ 'pop' を付ける
+  const pop = key => {
+    if (popped.has(key)) return '';
+    popped.add(key);
+    return ' pop';
+  };
   let destroyed = false;
 
   const nameOf = id => view.players.find(p => p.id === id)?.name ?? '?';
@@ -172,9 +179,9 @@ export function createUI(root, api) {
       );
     const reveal = st.step !== 'jan';
     let center;
-    if (st.step === 'jan') center = h('div', { class: 'gl-call big' }, 'じゃんけん…');
-    else if (st.step === 'pon') center = h('div', { class: 'gl-call big' }, 'ポン！');
-    else if (last.draw) center = h('div', { class: 'gl-call big' }, 'あいこ！'); // あいこ（演出後もそのまま表示）
+    if (st.step === 'jan') center = h('div', { class: 'gl-call big' + pop(`${last.seq}-jan`) }, 'じゃんけん…');
+    else if (st.step === 'pon') center = h('div', { class: 'gl-call big' + pop(`${last.seq}-pon`) }, 'ポン！');
+    else if (last.draw) center = h('div', { class: 'gl-call big' + pop(`${last.seq}-draw`) }, 'あいこ！'); // あいこ（演出後もそのまま表示）
     else {
       const dice = st.rolling ?? last.final;
       center = h('div', { class: 'gl-result' },
@@ -188,7 +195,7 @@ export function createUI(root, api) {
               last.mods.length ? h('div', { class: 'small gl-mods' }, '発動: ', last.mods.join('・')) : null,
             ),
         st.step === 'gain' || (st.step === 'done' && last.gained)
-          ? h('div', { class: 'gl-gain' }, `★ イベントマス！ ${SKILLS[last.gained].icon}${SKILLS[last.gained].name} を獲得`)
+          ? h('div', { class: 'gl-gain' + pop(`${last.seq}-gain`) }, `★ イベントマス！ ${SKILLS[last.gained].icon}${SKILLS[last.gained].name} を獲得`)
           : null,
       );
     }
@@ -294,6 +301,7 @@ export function createUI(root, api) {
       if (view.seq < (seenSeq ?? 0)) {
         // もう一度遊ぶ（最初から）
         seenSeq = view.seq;
+        popped.clear();
         stage = null;
         shown = Object.fromEntries(view.players.map(p => [p.id, p.pos]));
       }

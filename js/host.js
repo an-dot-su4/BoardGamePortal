@@ -1,7 +1,7 @@
 // ホスト（部屋を作った人のブラウザ）で動く進行役。
 // ゲームの正しい状態はここだけが持ち、各プレイヤーには「その人に見せてよい情報（view）」だけを送る。
 // 参加者から届くメッセージは信用せず、すべてここで検証する。
-import { GameError } from './util.js';
+import { GameError, playersLabel } from './util.js';
 import { cleanName, gameOptions, saveGameOptions } from './storage.js';
 import { findGame } from '../games/registry.js';
 
@@ -122,7 +122,7 @@ export class Host {
     const seated = this.lobbyPlayers();
     if (this.status !== 'lobby') return;
     if (seated.length < game.minPlayers || seated.length > game.maxPlayers) {
-      this.emitError(`${game.name} は ${game.minPlayers}〜${game.maxPlayers}人で遊べます`);
+      this.emitError(`${game.name} は ${playersLabel(game)}で遊べます`);
       return;
     }
     const problem = this.optionsError(seated.length);

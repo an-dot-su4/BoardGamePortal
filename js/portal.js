@@ -1,6 +1,6 @@
 // ポータル（トップページ）
 import { GAMES, MODE_LABEL, findGame } from '../games/registry.js';
-import { h, normalizeCode, randomCode } from './util.js';
+import { h, normalizeCode, playersLabel, randomCode } from './util.js';
 import {
   cleanName, hostRecord, playerName, playerPass, pruneHostRecords, recentRooms, saveHostRecord, setPlayerName, setPlayerPass,
 } from './storage.js';
@@ -63,7 +63,7 @@ for (const game of GAMES) {
       h('div', { class: 'title' }, h('span', { class: 'icon' }, game.icon), h('h3', {}, game.name)),
       h('div', { class: 'meta' },
         h('span', { class: `tag ${game.mode}` }, MODE_LABEL[game.mode]),
-        h('span', { class: 'tag' }, `${game.minPlayers}〜${game.maxPlayers}人`),
+        h('span', { class: 'tag' }, playersLabel(game)),
         h('span', { class: 'tag' }, game.time),
       ),
       h('p', {}, game.summary),

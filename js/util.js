@@ -81,3 +81,8 @@ export async function passHash(code, pass) {
 
 // ゲームのルール違反を表すエラー。ホストはこれをプレイヤーにそのまま表示する。
 export class GameError extends Error {}
+
+// 遊べる人数の表示（「2人」「2〜4人」）
+export function playersLabel(game) {
+  return game.minPlayers === game.maxPlayers ? `${game.minPlayers}人` : `${game.minPlayers}〜${game.maxPlayers}人`;
+}
