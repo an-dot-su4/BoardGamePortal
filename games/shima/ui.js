@@ -2,6 +2,7 @@
 //   盤面（SVG）: マス・村・城下町・道。建てるモードのとき、置ける場所が光ってタップで建てる
 //   下: 季節札（今と次）、自分の資源、建てる、市場、交換、プレイヤー
 import { h } from '../../js/util.js';
+import { Anim, clearFx, confetti, floatText, fly, gust, withAnim } from '../../js/fx.js';
 import {
   BUILD_INFO, COSTS, GOALS, PRICE_MAX, RES, RES_INFO, SIZE, TERRAIN, TYPHOON_LIMIT, allEdges, edgeEnds, neighbors, parseV, vertexEdges,
 } from './logic.js';
@@ -44,6 +45,8 @@ export function createUI(root, api) {
   let marketGive = null;
   let marketGet = null;
   let trade = { give: {}, get: {} };
+  const anim = new Anim();
+  const priceDir = {}; // 市場の値段が上がった(+1)／下がった(-1)
 
   const me = () => view.players.find(p => p.id === view.me);
   const colorOf = id => COLORS[view.players.findIndex(p => p.id === id)] ?? '#888';
@@ -94,7 +97,8 @@ export function createUI(root, api) {
       const x = PAD + t.x * TILE;
       const y = PAD + t.y * TILE;
       const hot = view.card?.kind === 'season' && view.card.t.includes(t.t);
-      layers.push(svg('rect', { x: x + 1, y: y + 1, width: TILE - 2, height: TILE - 2, rx: 6, fill: TERRAIN[t.t].color, stroke: hot ? '#fff6b0' : 'none', 'stroke-width': hot ? 3 : 0 }));
+      const glow = hot ? anim.attrs(`hot-${view.turnNo}`, 'fx-glow', 1200) : null;
+      layers.push(svg('rect', { class: glow?.cls, style: glow ? `animation-delay:${glow.style.animationDelay}` : null, 'data-tile': `${t.x},${t.y}`, x: x + 1, y: y + 1, width: TILE - 2, height: TILE - 2, rx: 6, fill: TERRAIN[t.t].color, stroke: hot ? '#fff6b0' : 'none', 'stroke-width': hot ? 3 : 0 }));
       layers.push(svg('text', { x: x + TILE / 2, y: y + TILE / 2 + 9, 'text-anchor': 'middle', 'font-size': 26, opacity: 0.85 }, TERRAIN_ICON[t.t]));
     }
     // 道
@@ -103,7 +107,8 @@ export function createUI(root, api) {
       const owner = view.roads[e];
       if (owner !== undefined) {
         layers.push(svg('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: '#2b2014', 'stroke-width': 9, 'stroke-linecap': 'round' }));
-        layers.push(svg('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: colorOf(owner), 'stroke-width': 6, 'stroke-linecap': 'round' }));
+        const draw = anim.attrs(`road-${e}`, 'fx-draw', 500);
+        layers.push(svg('line', { class: draw?.cls, style: draw ? `animation-delay:${draw.style.animationDelay}` : null, x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: colorOf(owner), 'stroke-width': 6, 'stroke-linecap': 'round' }));
       } else if (m === 'road' && roadOk(e)) {
         layers.push(svg('line', { class: 'sh-spot', x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: '#fff6b0', 'stroke-width': 8, 'stroke-linecap': 'round', 'stroke-dasharray': '6 5' }));
         // 押しやすいよう、透明の太い線を重ねる
@@ -120,7 +125,8 @@ export function createUI(root, api) {
           const c = colorOf(b.p);
           const town = b.town;
           const pickable = m === 'town' && b.p === view.me && !town;
-          layers.push(svg('g', { class: pickable ? 'sh-pick' : null, 'data-vertex': v, onclick: pickable ? () => place('town', v) : null },
+          const popA = anim.attrs(`vil-${v}-${town ? 't' : 'v'}`, 'fx-pop', 550);
+          layers.push(svg('g', { class: [pickable && 'sh-pick', popA?.cls].filter(Boolean).join(' ') || null, style: popA ? `animation-delay:${popA.style.animationDelay}` : null, 'data-vertex': v, onclick: pickable ? () => place('town', v) : null },
             pickable ? svg('circle', { cx: x, cy: y, r: 20, fill: '#fff6b0', opacity: 0.7 }) : null,
             town
               ? svg('path', { d: `M${x - 13} ${y + 10} V${y - 4} L${x - 7} ${y - 12} L${x} ${y - 6} L${x + 7} ${y - 12} L${x + 13} ${y - 4} V${y + 10}Z`, fill: c, stroke: '#fff', 'stroke-width': 2 })
@@ -131,14 +137,16 @@ export function createUI(root, api) {
         }
       }
     }
-    return svg('svg', { class: 'sh-board', viewBox: `0 0 ${W} ${W}`, role: 'img', 'aria-label': '島の盤面' }, layers);
+    const shake = anim.attrs(`typhoon-${view.turnNo}`, 'fx-shake', 600);
+    return svg('svg', { class: ['sh-board', shake?.cls].filter(Boolean).join(' '), style: shake ? `animation-delay:${shake.style.animationDelay}` : null, viewBox: `0 0 ${W} ${W}`, role: 'img', 'aria-label': '島の盤面' }, layers);
   }
 
   // ---- 部品 ----
-  function cardEl(card, label) {
+  function cardEl(card, label, current = false) {
     if (!card) return null;
-    if (card.kind === 'typhoon') return h('div', { class: 'sh-card typhoon' }, h('div', { class: 'small' }, label), h('b', {}, '🌀 台風'), h('div', { class: 'small' }, `${TYPHOON_LIMIT}枚以上持つ人は2枚失う・市場の値段が戻る`));
-    return h('div', { class: 'sh-card' }, h('div', { class: 'small' }, label), h('b', {}, card.t.map(t => `${TERRAIN_ICON[t]}${TERRAIN[t].name}`).join('・')));
+    const a = current ? cls => withAnim(anim, `card-${view.turnNo}`, 'fx-flip', 600, { class: cls }) : cls => ({ class: cls });
+    if (card.kind === 'typhoon') return h('div', a('sh-card typhoon'), h('div', { class: 'small' }, label), h('b', {}, '🌀 台風'), h('div', { class: 'small' }, `${TYPHOON_LIMIT}枚以上持つ人は2枚失う・市場の値段が戻る`));
+    return h('div', a('sh-card'), h('div', { class: 'small' }, label), h('b', {}, card.t.map(t => `${TERRAIN_ICON[t]}${TERRAIN[t].name}`).join('・')));
   }
 
   function status() {
@@ -156,14 +164,14 @@ export function createUI(root, api) {
     const got = view.produced?.[turnP];
     return h('div', { class: 'sh-status' },
       h('strong', {}, myTurn() ? '🟡 あなたの手番' : `${nameOf(turnP)} の手番`, `（${view.round}ラウンド目）`),
-      h('div', { class: 'sh-cards' }, cardEl(view.card, 'いまの季節'), cardEl(view.next, '次（次の人の季節）')),
+      h('div', { class: 'sh-cards' }, cardEl(view.card, 'いまの季節', true), cardEl(view.next, '次（次の人の季節）')),
       got ? h('div', { class: 'small' }, `${nameOf(turnP)} が得た資源: ${bagText(got) || 'なし'}`) : null,
     );
   }
 
   function resources() {
     if (!view.myRes) return null;
-    return h('div', { class: 'sh-res' }, RES.map(r => h('span', { class: 'sh-res-item' }, RES_INFO[r].icon, h('b', {}, view.myRes[r]), h('small', {}, RES_INFO[r].name))));
+    return h('div', { class: 'sh-res' }, RES.map(r => h('span', withAnim(anim, `res-${r}`, 'fx-bump', 500, { class: 'sh-res-item', 'data-res': r }), RES_INFO[r].icon, h('b', {}, view.myRes[r]), h('small', {}, RES_INFO[r].name))));
   }
 
   function buildBox() {
@@ -197,7 +205,8 @@ export function createUI(root, api) {
     const ok = mine && marketGive && marketGet && marketGive !== marketGet && view.myRes[marketGive] >= price;
     return h('section', { class: 'sh-panel' },
       h('div', { class: 'sh-panel-title' }, '🏪 市場', h('span', { class: 'small muted' }, '（欲しい資源1枚 ＝ 値段の枚数ぶん、別の1種類を払う）')),
-      h('div', { class: 'sh-prices' }, RES.map(r => h('span', { class: 'sh-price' }, `${RES_INFO[r].icon}${RES_INFO[r].name} `, h('b', {}, view.prices[r]), h('small', {}, '枚'), h('span', { class: 'sh-meter' }, h('i', { style: { width: `${(view.prices[r] / PRICE_MAX) * 100}%` } }))))),
+      h('div', { class: 'sh-prices' }, RES.map(r => h('span', withAnim(anim, `price-${r}`, 'fx-flash', 900, { class: 'sh-price' }), `${RES_INFO[r].icon}${RES_INFO[r].name} `, h('b', {}, view.prices[r]),
+        anim.attrs(`price-${r}`, '', 1500) && priceDir[r] ? h('b', { class: priceDir[r] > 0 ? 'fx-up' : 'fx-down' }, priceDir[r] > 0 ? '▲' : '▼') : null, h('small', {}, '枚'), h('span', { class: 'sh-meter' }, h('i', { style: { width: `${(view.prices[r] / PRICE_MAX) * 100}%` } }))))),
       mine
         ? h('div', { class: 'sh-market-row' },
             h('span', { class: 'small' }, '払う'),
@@ -216,7 +225,7 @@ export function createUI(root, api) {
     if (o) {
       const mineOffer = o.from === view.me;
       const answered = o.declined.includes(view.me);
-      return h('section', { class: 'sh-panel sh-offer' },
+      return h('section', withAnim(anim, `offer-${o.id}`, 'fx-slide', 450, { class: 'sh-panel sh-offer' }),
         h('div', { class: 'sh-panel-title' }, `🤝 ${nameOf(o.from)} からの交換の申し出`),
         h('div', {}, `${nameOf(o.from)} が出す: ${bagText(o.give)}　／　ほしい: ${bagText(o.get)}`),
         mineOffer
@@ -251,7 +260,7 @@ export function createUI(root, api) {
 
   function playersBox() {
     return h('div', { class: 'seats' },
-      view.players.map(p => h('div', { class: ['seat', view.turn?.p === p.id && 'turn', p.id === view.me && 'me'].filter(Boolean).join(' ') },
+      view.players.map(p => h('div', withAnim(anim, `seat-${p.id}`, 'fx-bump', 500, { class: ['seat', view.turn?.p === p.id && 'turn', p.id === view.me && 'me'].filter(Boolean).join(' '), 'data-seat': p.id }),
         h('div', { class: 'name' }, h('span', { class: 'sh-dot', style: { background: colorOf(p.id) } }), p.bot ? '🤖 ' : '', p.name),
         h('div', { class: 'small' }, h('b', {}, `${p.points}点`), ` / ${view.goal}点・資源${p.cards}枚`),
         h('div', { class: 'small muted' }, `🏠${p.villages} 🏯${p.towns} 🛤️${p.roads}${p.temple ? ' ⛩️' : ''}`),
@@ -288,12 +297,95 @@ export function createUI(root, api) {
     );
   }
 
+  // 前の状態との違いから演出を決める。CSS の演出は anim.start、飛ぶアイコンなどは描いたあとに実行する関数を返す
+  function diff(prev, next) {
+    const out = [];
+    const tileEl = (x, y) => root.querySelector(`[data-tile="${x},${y}"]`);
+    const target = (p, r) => (p === next.me ? root.querySelector(`.sh-res-item[data-res="${r}"]`) : root.querySelector(`[data-seat="${p}"]`));
+    const newTurn = next.turnNo !== prev.turnNo && next.phase !== 'setup';
+    if (newTurn && next.card) {
+      anim.start(`card-${next.turnNo}`);
+      if (next.card.kind === 'typhoon') {
+        anim.start(`typhoon-${next.turnNo}`);
+        out.push(() => gust());
+      } else {
+        anim.start(`hot-${next.turnNo}`);
+        // 資源が、光ったマスから手番の人のところへ飛ぶ
+        const p = next.turn.p;
+        out.push(() => {
+          let k = 0;
+          const total = {};
+          for (const [v, b] of Object.entries(next.villages)) {
+            if (b.p !== p) continue;
+            const [i, j] = v.split(',').map(Number);
+            for (const [x, y] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) {
+              const tile = next.tiles.find(t => t.x === x && t.y === y);
+              if (!tile || !next.card.t.includes(tile.t)) continue;
+              const r = TERRAIN[tile.t].res;
+              for (let n = 0; n < (b.town ? 2 : 1); n++) fly(tileEl(x, y), target(p, r), RES_INFO[r].icon, { delay: 250 + k++ * 110 });
+              total[r] = (total[r] ?? 0) + (b.town ? 2 : 1);
+            }
+          }
+          let d = 0;
+          for (const r of RES) if (total[r]) floatText(target(p, r), `+${total[r]}`, { delay: 850 + d++ * 120 });
+        });
+      }
+    }
+    for (const [v, b] of Object.entries(next.villages)) {
+      const was = prev.villages[v];
+      if (!was || was.town !== b.town) anim.start(`vil-${v}-${b.town ? 't' : 'v'}`);
+    }
+    for (const e of Object.keys(next.roads)) if (prev.roads[e] === undefined) anim.start(`road-${e}`);
+    // 自分の資源の増減（季節の恵み以外: 市場・交換・建てる・台風）
+    if (prev.myRes && next.myRes) {
+      for (const r of RES) {
+        const d = next.myRes[r] - prev.myRes[r];
+        if (!d) continue;
+        anim.start(`res-${r}`);
+        if (!newTurn || next.card?.kind === 'typhoon') out.push(() => floatText(target(next.me, r), d > 0 ? `+${d}` : `${d}`, { color: d > 0 ? '#ffd36b' : '#ff8a7a' }));
+      }
+    }
+    for (const r of RES) {
+      if (next.prices[r] !== prev.prices[r]) {
+        priceDir[r] = Math.sign(next.prices[r] - prev.prices[r]);
+        anim.started.delete(`price-${r}`);
+        anim.start(`price-${r}`);
+      }
+    }
+    if (next.offer && next.offer.id !== prev.offer?.id) anim.start(`offer-${next.offer.id}`);
+    for (const p of next.players) {
+      const was = prev.players.find(x => x.id === p.id);
+      if (was && p.points > was.points) {
+        anim.start(`seat-${p.id}`);
+        out.push(() => floatText(root.querySelector(`[data-seat="${p.id}"]`), `+${p.points - was.points}点`, { color: '#fff' }));
+      }
+    }
+    if (next.phase === 'over' && prev.phase !== 'over') out.push(() => confetti());
+    // 演出の途中で描き直しても続くよう、しばらく描き直しを続ける
+    if (anim.started.size) scheduleRefresh();
+    return out;
+  }
+
+  let refreshTimer = null;
+  function scheduleRefresh() {
+    if (refreshTimer) return;
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null;
+      render();
+    }, 1600);
+  }
+
   return {
     update(next) {
-      view = next;
+      const prev = view;
+      // ホストの画面にはゲームの状態そのものが渡るので、前後を比べられるよう写しを持つ
+      view = structuredClone(next);
+      const effects = prev ? diff(prev, next) : [];
       render();
+      if (effects.length) requestAnimationFrame(() => effects.forEach(f => f()));
     },
     destroy() {
+      clearFx();
       root.replaceChildren();
     },
   };

@@ -236,6 +236,7 @@ function startTurn(g, p, rng) {
     // ラウンドのはじめに、市場の値段は1ずつ元（3）に近づく
     for (const r of RES) g.prices[r] += Math.sign(PRICE_BASE - g.prices[r]);
   }
+  g.turnNo = (g.turnNo ?? 0) + 1; // 手番の通し番号（画面の演出用）
   g.turn = { p };
   g.offer = null;
   drawCard(g, rng);
@@ -408,6 +409,7 @@ export function view(g, p) {
     setup: g.setup,
     turn: g.turn,
     round: g.round,
+    turnNo: g.turnNo ?? 0,
     offer: g.offer,
     winner: g.winner,
     myRes: seated ? g.res[p] : null,

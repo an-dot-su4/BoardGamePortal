@@ -91,6 +91,15 @@ export function createUI(root, api) {   // api.send(action), api.toast(text), ap
   画面を変えたら `MOBILE=1`（縦）と `LANDSCAPE=1`（横 844×390）の e2e のスクショも見る。再描画でスクロール位置を保つため、スクロールする要素には `dataset.scrollKey` を付ける。
 - スマホ幅（390px 前後）で崩れないこと。共通のクラス（`.table` `.seats` `.seat` `.hand` `.result-box` `.game-actions` など）は `css/style.css` にある。
 
+## 演出（js/fx.js）
+
+- 画面は状態のたびに丸ごと描き直すので、演出は「前の view と次の view の差」から決める（`update` で `structuredClone(next)` を持ち、`diff(prev, next)`）。
+  ホストの画面にはゲームの状態そのものが渡るため、写しを取らないと前後が同じオブジェクトになり差が出ない。
+- CSS の演出は `Anim`（`start(key)` → 描くとき `attrs`/`withAnim`）。描き直しても animation-delay を負にして途中から続く。
+- 飛ぶアイコン・浮かぶ文字・中央に大きく見せる・紙吹雪・風は `fly` / `floatText` / `spotlight` / `confetti` / `gust`（body 直下の層。`destroy` で `clearFx`）。
+- 位置が要る演出は、描き直す前に要素の位置を測っておき（天下札の `rects()`）、描いたあと `requestAnimationFrame` で再生する。
+- 「動きを減らす」設定（prefers-reduced-motion）のときは演出しない。
+
 ## テスト・確認
 
 - `npm test` … ルールのテスト。新しいゲームには「ランダムに最後まで遊んで必ず終わる」「不正な操作が拒否される」「隠す情報が view に出ない」テストを必ず書く。協力ゲームは難易度のシミュレーションも。

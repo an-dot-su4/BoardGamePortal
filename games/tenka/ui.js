@@ -1,6 +1,7 @@
 // 天下札の画面
 import { h } from '../../js/util.js';
 import { load, save } from '../../js/storage.js';
+import { Anim, clearFx, confetti, floatText, fly, spotlight } from '../../js/fx.js';
 import { CARDS, KINGDOM, PRESETS, SETS } from './cards/index.js';
 import { cardEl, TYPE_LABEL } from './cardview.js';
 
@@ -82,6 +83,16 @@ export function createUI(root, api) {
   let zoomed = null; // 拡大表示中の札
   let overpay = 0; // 棟梁などで多く払う額
   let layout = load(LAYOUT_KEY, 'auto');
+  const anim = new Anim();
+  // 要素に演出の class を付ける（描き直しても途中から続く）
+  const fx = (el, key, cls, dur) => {
+    const a = anim.attrs(key, cls, dur);
+    if (a && el) {
+      el.classList.add(a.cls);
+      el.style.animationDelay = a.style.animationDelay;
+    }
+    return el;
+  };
   let menuOpen = false; // スマホ表示の☰メニュー
   let peek = false; // スマホ表示を一時的に隠して部屋の画面（チャット）を見ている
   const mq = typeof matchMedia === 'function' ? matchMedia(AUTO_MOBILE) : null;
@@ -134,7 +145,7 @@ export function createUI(root, api) {
       h('div', { class: 'table tk-table' },
         statusBar(myTurn),
         view.phase === 'over' ? resultBox() : null,
-        pr ? promptBox(pr) : null,
+        pr ? fx(promptBox(pr), promptKey(pr), 'fx-slide', 450) : null,
         supplyBox(myTurn),
         playersBox(),
         me ? handBox(myTurn) : h('p', { class: 'muted' }, '👀 観戦中です'),
@@ -194,7 +205,7 @@ export function createUI(root, api) {
           h('div', { class: 'log tk-m-log' }, view.log.slice(-4).reverse().map(l => h('div', { class: 'small muted' }, l))),
         ),
         h('div', { class: 'tk-m-bottom', dataset: { scrollKey: 'bottom' } },
-          pr ? promptBox(pr) : null,
+          pr ? fx(promptBox(pr), promptKey(pr), 'fx-slide', 450) : null,
           me ? handBox(myTurn) : h('p', { class: 'muted' }, '👀 観戦中です'),
         ),
       ),
@@ -214,10 +225,10 @@ export function createUI(root, api) {
     if (!t) return h('div', { class: 'tk-status' }, h('strong', {}, '🏯 終了'), toggle);
     const phase = t.phase === 'action' ? (compact ? '行動' : '行動フェーズ') : compact ? '購入' : '購入フェーズ';
     return h('div', { class: 'tk-status' },
-      h('strong', {}, myTurn ? `🟡 あなたの手番（${phase}）` : `${nameOf(t.p)} の手番（${phase}）`),
-      h('span', { class: 'tk-stat' }, '行動 ', h('b', {}, t.actions)),
-      h('span', { class: 'tk-stat' }, '購入 ', h('b', {}, t.buys)),
-      h('span', { class: 'tk-stat tk-coins' }, '文 ', h('b', {}, t.coins)),
+      fx(h('strong', {}, myTurn ? `🟡 あなたの手番（${phase}）` : `${nameOf(t.p)} の手番（${phase}）`), `turn-${view.turnNo}`, 'fx-flash', 900),
+      fx(h('span', { class: 'tk-stat', dataset: { stat: 'actions' } }, '行動 ', h('b', {}, t.actions)), 'stat-actions', 'fx-bump', 500),
+      fx(h('span', { class: 'tk-stat', dataset: { stat: 'buys' } }, '購入 ', h('b', {}, t.buys)), 'stat-buys', 'fx-bump', 500),
+      fx(h('span', { class: 'tk-stat tk-coins', dataset: { stat: 'coins' } }, '文 ', h('b', {}, t.coins)), 'stat-coins', 'fx-bump', 500),
       view.waitingFor ? h('span', { class: 'small' }, `⏳ ${nameOf(view.waitingFor)} の選択を待っています`) : null,
       toggle,
     );
@@ -234,7 +245,7 @@ export function createUI(root, api) {
       const n = view.supply[id];
       const affordable = myTurn && view.turn.buys > 0 && n > 0 && view.turn.coins >= c.cost && !view.prompt && !CARDS[id].notSupply;
       const promptPick = view.prompt?.kind === 'supply' && view.prompt.cands.includes(id);
-      return cardEl(c, {
+      return fx(cardEl(c, {
         size: 'mini',
         count: n,
         badge: [view.embargo?.[id] ? `関${view.embargo[id]}` : '', view.tradeRoute?.piles.includes(id) ? '印' : ''].filter(Boolean).join(' ') || null,
@@ -245,7 +256,7 @@ export function createUI(root, api) {
           zoomed = id;
           render();
         },
-      });
+      }), `pile-${id}`, 'fx-bump', 500);
     };
     return h('section', { class: 'tk-supply' },
       h('div', { class: 'tk-row-title small' }, '王国', h('span', { class: 'muted' }, '（タップで拡大・購入）')),
@@ -257,7 +268,7 @@ export function createUI(root, api) {
         return extra.length ? h('div', { class: 'tk-row' }, extra.map(pile)) : null;
       })(),
       view.tradeRoute ? h('div', { class: 'small muted' }, `馬借のマット: 印${view.tradeRoute.mat}つ（「印」のある勝利点の山から初めて獲得されると増える）`) : null,
-      h('div', { class: 'small muted' }, `廃棄置き場: ${view.trashCount}枚${view.trashTop ? `（一番上: ${CARDS[view.trashTop].name}）` : ''}`),
+      h('div', { class: 'small muted tk-trash' }, `廃棄置き場: ${view.trashCount}枚${view.trashTop ? `（一番上: ${CARDS[view.trashTop].name}）` : ''}`),
     );
   }
 
@@ -265,7 +276,7 @@ export function createUI(root, api) {
     return h('div', { class: 'seats' },
       view.players.map(p => {
         const turnP = view.turn?.p === p.id;
-        return h('div', { class: ['seat', turnP && 'turn', p.id === view.me && 'me'].filter(Boolean).join(' ') },
+        return fx(h('div', { class: ['seat', turnP && 'turn', p.id === view.me && 'me'].filter(Boolean).join(' '), dataset: { seat: p.id } },
           h('div', { class: 'name' }, p.bot ? '🤖 ' : '', p.name),
           h('div', { class: 'small' }, `手札${p.hand}・山札${p.deck}・捨て札${p.discard}`),
           h('div', { class: 'small muted' }, `全${p.total}枚`, p.fame ? `・名声${p.fame}` : '', p.coffers ? `・蓄え${p.coffers}` : '', p.vp !== null ? `・${p.vp}点` : ''),
@@ -282,7 +293,7 @@ export function createUI(root, api) {
           p.dur.length
             ? h('div', { class: 'tk-play', title: '次の手番にも効く札（持続中）' }, h('span', { class: 'small' }, '⏳'), p.dur.map(id => h('span', { class: 'tk-pill tk-pill-duration' }, CARDS[id].name)))
             : null,
-        );
+        ), `seat-${p.id}`, 'fx-bump', 500);
       }),
     );
   }
@@ -294,6 +305,7 @@ export function createUI(root, api) {
     const pool = choosing ? pr.cands.slice() : [];
     // 選択中は、同じ札が何枚選ばれているかで表示を決める
     const used = {};
+    const seen = {}; // 同じ札の何枚目か（引いた札の演出用）
     const cards = view.hand.map((id, i) => {
       let selected = false;
       let onclick = null;
@@ -309,7 +321,8 @@ export function createUI(root, api) {
       } else if (myTurn && (isType(id, 'treasure') || (isType(id, 'action') && t.phase === 'action' && t.actions > 0))) {
         onclick = () => send({ type: 'play', card: id });
       }
-      return cardEl(CARDS[id], { size: 'full', onclick, selected, dim: choosing && !pool.includes(id) });
+      const nth = (seen[id] = (seen[id] ?? 0) + 1);
+      return fx(cardEl(CARDS[id], { size: 'full', onclick, selected, dim: choosing && !pool.includes(id) }), `draw-${id}#${nth}`, 'fx-slide', 450);
     });
 
     const hasTreasure = view.hand.some(id => isType(id, 'treasure'));
@@ -432,13 +445,116 @@ export function createUI(root, api) {
     );
   }
 
+  const promptKey = pr => `prompt-${view.turnNo}-${pr.card}-${pr.title}`;
+
+  // 描き直す前の位置（手札・供給の山・席）。描き直すと要素が入れ替わるので、先に測っておく
+  function rects() {
+    const out = { hand: [], piles: {}, seats: {} };
+    for (const el of root.querySelectorAll('.tk-hand [data-card]')) out.hand.push({ id: el.dataset.card, rect: el.getBoundingClientRect() });
+    for (const el of root.querySelectorAll('.tk-supply [data-card]')) out.piles[el.dataset.card] = el.getBoundingClientRect();
+    for (const el of root.querySelectorAll('[data-seat]')) out.seats[el.dataset.seat] = el.getBoundingClientRect();
+    return out;
+  }
+
+  const mini = id => {
+    const el = cardEl(CARDS[id], { size: 'mini' });
+    return el;
+  };
+
+  // 前の状態との違いから演出を決める
+  function diff(prev, next, before) {
+    const out = [];
+    const t = next.turn;
+    const sameTurn = prev.turn && t && prev.turn.p === t.p && prev.turnNo === next.turnNo;
+    const seat = id => root.querySelector(`[data-seat="${id}"]`) ?? before.seats[id];
+    const stat = name => root.querySelector(`[data-stat="${name}"]`);
+
+    // 自分の手番になった
+    if (t && t.p === next.me && prev.turnNo !== next.turnNo) anim.start(`turn-${next.turnNo}`);
+
+    // 使った札: 場に増えた札を、画面の中央に大きく見せる（財宝は文の増え方で見せる）
+    if (t && sameTurn) {
+      const pp = prev.players.find(p => p.id === t.p);
+      const np = next.players.find(p => p.id === t.p);
+      const added = np.play.slice(pp.play.length);
+      const shown = added.filter(id => CARDS[id].types.includes('action')).slice(0, 2);
+      shown.forEach((id, k) => {
+        const from = t.p === next.me ? before.hand.find(h => h.id === id)?.rect : before.seats[t.p];
+        const box = document.createElement('div');
+        box.appendChild(cardEl(CARDS[id], { size: 'full' }));
+        const cap = document.createElement('div');
+        cap.className = 'fx-caption';
+        cap.textContent = `${nameOf(t.p)}: ${CARDS[id].name}`;
+        box.appendChild(cap);
+        out.push(() => setTimeout(() => spotlight(box, { from, duration: 1150 }), k * 700));
+      });
+      // 自分が出した財宝は、手札から「文」へ飛ぶ
+      if (t.p === next.me) {
+        const treasures = added.filter(id => !CARDS[id].types.includes('action'));
+        treasures.slice(0, 8).forEach((id, k) => {
+          const from = before.hand.filter(h => h.id === id)[0]?.rect;
+          out.push(() => fly(from, stat('coins'), '🪙', { delay: k * 70, duration: 550 }));
+        });
+      }
+      // 行動・購入・文の増減
+      for (const [k, label] of [['actions', '行動'], ['buys', '購入'], ['coins', '文']]) {
+        const d = t[k] - prev.turn[k];
+        if (d > 0) {
+          anim.start(`stat-${k}`);
+          out.push(() => floatText(stat(k), `+${d}${label}`, { delay: 250 }));
+        }
+      }
+    }
+
+    // 獲得した札: 供給の山から、増えた人の席へ飛ぶ
+    const gainers = next.players.filter(p => {
+      const was = prev.players.find(x => x.id === p.id);
+      return was && p.total > was.total;
+    });
+    let k = 0;
+    for (const id of Object.keys(next.supply)) {
+      const d = (prev.supply[id] ?? 0) - next.supply[id];
+      if (d <= 0 || id === 'senrihin') continue;
+      anim.start(`pile-${id}`);
+      for (let n = 0; n < Math.min(d, 3); n++) {
+        const to = gainers.length ? gainers[(k + n) % gainers.length].id : t?.p;
+        const shownId = id === 'ruins' ? prev.ruinsTop ?? id : id === 'bushi' ? prev.knightsTop ?? id : id;
+        const from = before.piles[id];
+        const delay = k++ * 160;
+        out.push(() => fly(from, seat(to), mini(shownId), { delay, duration: 750 }));
+      }
+    }
+    for (const p of gainers) anim.start(`seat-${p.id}`);
+
+    // 手札に増えた札（引いた・手札に獲得した）
+    const count = list => list.reduce((m, id) => ((m[id] = (m[id] ?? 0) + 1), m), {});
+    const was = count(prev.hand);
+    const now = count(next.hand);
+    for (const [id, n] of Object.entries(now)) for (let i = (was[id] ?? 0) + 1; i <= n; i++) anim.start(`draw-${id}#${i}`);
+
+    // 廃棄
+    if (next.trashCount > prev.trashCount) out.push(() => floatText(root.querySelector('.tk-trash'), `🔥 ${next.trashCount - prev.trashCount}枚廃棄`, { color: '#ffb36b' }));
+
+    // 選択が来た
+    if (next.prompt && (!prev.prompt || promptKey(prev.prompt) !== promptKey(next.prompt))) anim.start(promptKey(next.prompt));
+
+    if (next.phase === 'over' && prev.phase !== 'over') out.push(() => confetti());
+    return out;
+  }
+
   return {
     update(next, nextCtx) {
-      view = next;
+      const prev = view;
+      // ホストの画面にはゲームの状態そのものが渡るので、前後を比べられるよう写しを持つ
+      view = structuredClone(next);
       ctx = nextCtx ?? ctx;
+      const before = prev ? rects() : null;
+      const effects = prev ? diff(prev, view, before) : [];
       render();
+      if (effects.length) requestAnimationFrame(() => effects.forEach(f => f()));
     },
     destroy() {
+      clearFx();
       mq?.removeEventListener?.('change', onMedia);
       document.documentElement.classList.remove('tk-m-open');
       root.replaceChildren();
