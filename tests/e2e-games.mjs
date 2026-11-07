@@ -360,6 +360,47 @@ const scenarios = {
     assert.equal(await pages[2].locator('.ok-chain').count(), 3);
     await shot(pages[2], 'oekaki-3-reveal');
   },
+  async akinai() {
+    const { pages } = await openGame('あきない通り', ['あき', 'なつ', 'ふゆ']);
+    await shot(pages[0], 'akinai-1-start');
+    let bought = 0;
+    let picked = 0;
+    for (let t = 0; t < 24; t++) {
+      let acted = false;
+      for (const p of pages) {
+        if (!(await has(p, 'text=🟡 あなたの手番'))) continue;
+        acted = true;
+        if (await has(p, 'button:has-text("🎲 サイコロを振る")')) {
+          await p.getByRole('button', { name: '🎲 サイコロを振る' }).click();
+          await pause(p, 250);
+        }
+        if (await has(p, '.ak-fuku.picking')) {
+          if (!picked) await shot(p, 'akinai-2-pick');
+          await p.locator('.ak-fuku.picking button.ak-fk:not([disabled])').first().click();
+          picked++;
+          await pause(p, 250);
+        }
+        const buy = p.locator('.ak-actions button', { hasText: 'で買う' }).first();
+        if ((await buy.count()) && (await buy.isEnabled()) && !(await buy.innerText()).includes('株')) {
+          await buy.click();
+          bought++;
+          await pause(p, 200);
+        }
+        if (t === 6) await shot(p, 'akinai-3-action');
+        const debt = await has(p, 'text=足りません');
+        if (debt) break;
+        const end = p.getByRole('button', { name: /手番を終える|もう一度振る/ });
+        if (await end.count()) await end.click();
+        await pause(p, 200);
+        break;
+      }
+      if (!acted) await pause(pages[0], 200);
+    }
+    await shot(pages[1], 'akinai-4-later');
+    assert.ok(bought > 0, '店を1軒も買えていない');
+    const log = await pages[0].locator('.log').innerText();
+    assert.ok(log.includes('が出た'), 'サイコロが振られていない');
+  },
 };
 
 try {
