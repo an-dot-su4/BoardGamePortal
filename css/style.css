@@ -623,6 +623,20 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .ak-fk.open { background: #fffaf0; }
 .ak-fk.open.done { background: #fff1a8; }
 .ak-side { display: grid; gap: 8px; align-content: start; }
+.ak-sq.route-opt { cursor: pointer; outline: 3px solid #ffd36b; outline-offset: -1px; z-index: 1; animation: ak-pulse 0.8s ease-in-out infinite alternate; }
+@keyframes ak-pulse { from { filter: none; transform: scale(1); } to { filter: brightness(1.15) drop-shadow(0 0 6px #ffd36b); transform: scale(1.06); } }
+.ak-panel.route { border: 2px solid #ffd36b; }
+.ak-route-btn { flex: 1 1 200px; }
+.ak-eight { display: grid; gap: 8px; }
+.ak-board.eight { max-width: 420px; margin: 0 auto; width: 100%; }
+.ak-inner { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 4px 8px; background: rgb(0 0 0 / 0.18); border-radius: 10px; margin: 3px; font-size: clamp(0.62rem, 2.6vw, 0.8rem); min-width: 0; }
+.ak-inner-title { font-weight: 800; opacity: 0.85; }
+.ak-inner-row { white-space: nowrap; overflow: hidden; }
+.ak-inner-row .ak-area-dot { display: inline-block; vertical-align: -1px; }
+.ak-inner-mine { color: #ffd36b; font-weight: 800; }
+.ak-bank-label { display: flex; align-items: center; justify-content: center; font-size: clamp(0.6rem, 2.4vw, 0.75rem); opacity: 0.8; }
+.ak-eight-fuku .ak-fuku { max-width: 420px; width: 100%; margin: 0 auto; }
+.ak-eight-fuku .ak-fuku-grid { aspect-ratio: 1; }
 .ak-actions { display: grid; gap: 8px; }
 .ak-panel { background: rgb(0 0 0 / 0.2); border-radius: 12px; padding: 8px; display: grid; gap: 6px; }
 .ak-panel.warn { border: 2px solid #ff8a7a; }
@@ -696,5 +710,5 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .fx-up { color: #ff8a7a; }
 .fx-down { color: #8ad8ff; }
 @media (prefers-reduced-motion: reduce) {
-  .fx-pop, .fx-bump, .fx-flip, .fx-glow, .fx-slide, .fx-shake, .fx-flash, .fx-draw, .ak-roll, .ak-tumble, .ak-bigdie, .ak-fuku.picking .ak-fk { animation: none; }
+  .fx-pop, .fx-bump, .fx-flip, .fx-glow, .fx-slide, .fx-shake, .fx-flash, .fx-draw, .ak-roll, .ak-tumble, .ak-bigdie, .ak-fuku.picking .ak-fk, .ak-sq.route-opt { animation: none; }
 }

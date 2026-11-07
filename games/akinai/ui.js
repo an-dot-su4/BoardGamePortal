@@ -5,7 +5,7 @@
 import { h } from '../../js/util.js';
 import { Anim, clearFx, confetti, floatText, fly, gust, spotlight, withAnim } from '../../js/fx.js';
 import {
-  AREAS, AREA_INFO, CARDS, FUKU_SIZE, GOALS, LINES, MARKS, MARK_INFO, MAX_STOCK_BUY, ROUNDS, SELL_RATE, SQUARES, squarePos,
+  AREA_INFO, BOARDS, CARDS, FUKU_SIZE, GOALS, LINES, MARKS, MARK_INFO, MAX_STOCK_BUY, ROUNDS, SELL_RATE,
 } from './logic.js';
 
 const COLORS = ['#e8524a', '#3b82f6', '#22a35a', '#9b5de5'];
@@ -20,6 +20,13 @@ export function renderOptions(root, options, { editable, onChange }) {
       h('label', {}, '目標資産（届いた状態で銀行に戻れば勝ち）'),
       h('select', { class: 'input', disabled: !editable, onchange: e => onChange({ ...options, goal: Number(e.target.value) }) },
         GOALS.map(n => h('option', { value: n, selected: options.goal === n }, `${yen(n)}${n === 4000 ? '（標準・約15ラウンド）' : n < 4000 ? '（短め）' : '（長め）'}`)),
+      ),
+    ),
+    h('div', { class: 'field' },
+      h('label', {}, '盤'),
+      h('select', { class: 'input', disabled: !editable, onchange: e => onChange({ ...options, board: e.target.value }) },
+        h('option', { value: 'ring', selected: options.board !== 'eight' }, '1周（標準・28マス・4つの町）'),
+        h('option', { value: 'eight', selected: options.board === 'eight' }, '8の字（中央に銀行・分かれ道あり・8つの町。少し長め）'),
       ),
     ),
     h('div', { class: 'field' },
@@ -54,12 +61,16 @@ export function createUI(root, api) {
   const colorOf = id => COLORS[view.players.findIndex(p => p.id === id)] ?? '#888';
   const nameOf = id => P(id)?.name ?? '?';
   const myTurn = () => view.phase !== 'over' && view.turn?.p === view.me;
+  const B = () => BOARDS[view.board ?? 'ring'];
+  const SQ = () => B().squares;
+  const routing = () => myTurn() && view.phase === 'route';
   const me = () => P(view.me);
 
   // ---- 盤 ----
   function square(i) {
-    const sq = SQUARES[i];
-    const { x, y } = squarePos(i);
+    const sq = SQ()[i];
+    const { x, y } = B().pos[i];
+    const opt = routing() && view.turn.options.includes(i);
     const here = view.players.filter(p => p.pos === i);
     const tokens = h('div', { class: 'ak-tokens' }, here.map(p => h('span', {
       class: ['ak-token', (hidden[p.id] ?? 0) > performance.now() && 'ak-hide'].filter(Boolean).join(' '),
@@ -67,14 +78,15 @@ export function createUI(root, api) {
       style: { background: colorOf(p.id) },
       title: p.name,
     }, p.name.slice(0, 1))));
-    const base = { 'data-sq': i, style: { gridColumn: x + 1, gridRow: y + 1 } };
+    const base = { 'data-sq': i, style: { gridColumn: x + 1, gridRow: y + 1 }, onclick: opt ? () => send({ type: 'route', to: i }) : null };
+    const cls = extra => ['ak-sq', ...extra, opt && 'route-opt'].filter(Boolean).join(' ');
     if (sq.k === 'shop') {
       const s = view.shops[i];
       const area = AREA_INFO[sq.area];
       const owner = s.owner;
       return h('div', withAnim(anim, `sq-${i}`, 'fx-bump', 500, {
         ...base,
-        class: ['ak-sq', 'shop', owner && 'owned'].filter(Boolean).join(' '),
+        class: cls(['shop', owner && 'owned']),
         style: owner ? { ...base.style, boxShadow: `inset 0 0 0 3px ${colorOf(owner)}`, background: `color-mix(in srgb, ${colorOf(owner)} 20%, #fbf6ec)` } : base.style,
         title: `${area.name}・${sq.name}（価値 ${s.value}G・買物料 ${s.fee}G・上限 ${s.cap}G）${owner ? `／${nameOf(owner)}の店` : '／空き店'}`,
       }),
@@ -86,7 +98,7 @@ export function createUI(root, api) {
       tokens);
     }
     const label = sq.k === 'bank' ? ['🏦', '銀行'] : sq.k === 'chance' ? ['❓', '福引き'] : [MARK_INFO[sq.mark].icon, MARK_INFO[sq.mark].name];
-    return h('div', { ...base, class: `ak-sq ${sq.k}${sq.mark ? ` ${sq.mark}` : ''}` },
+    return h('div', { ...base, class: cls([sq.k, sq.mark]) },
       h('span', { class: 'ak-icon' }, label[0]),
       h('span', { class: 'ak-name' }, label[1]),
       tokens);
@@ -120,10 +132,43 @@ export function createUI(root, api) {
   }
 
   function board() {
-    return h('div', { class: 'ak-board' },
-      SQUARES.map((_, i) => square(i)),
-      h('div', { class: 'ak-center' }, fukuBoard()),
+    const b = B();
+    const grid = { gridTemplateColumns: `repeat(${b.cols}, 1fr)`, gridTemplateRows: `repeat(${b.rows}, 1fr)`, aspectRatio: `${b.cols} / ${b.rows}` };
+    if (b.id === 'ring') {
+      return h('div', { class: 'ak-board', style: grid },
+        b.squares.map((_, i) => square(i)),
+        h('div', { class: 'ak-center' }, fukuBoard()),
+      );
+    }
+    // 8の字: 輪の内側にその輪の町と株価、福引き盤は盤の下
+    const inner = (loop, row) => {
+      const areas = b.areas.filter(a => b.squares.some((sq, i) => sq.area === a && b.loop[i] === loop));
+      return h('div', { class: 'ak-inner', style: { gridColumn: '2 / 7', gridRow: `${row} / ${row + 3}` } },
+        h('div', { class: 'ak-inner-title' }, loop === 'top' ? '上の輪' : '下の輪'),
+        areas.map(a => h('div', { class: 'ak-inner-row' }, h('span', { class: 'ak-area-dot', style: { background: AREA_INFO[a].color } }), ` ${AREA_INFO[a].name}`, h('b', {}, ` 株${view.prices[a]}G`),
+          me()?.stocks[a] ? h('span', { class: 'ak-inner-mine' }, ` 📈${me().stocks[a]}`) : null)),
+      );
+    };
+    return h('div', { class: 'ak-eight' },
+      h('div', { class: 'ak-board eight', style: grid },
+        b.squares.map((_, i) => square(i)),
+        inner('top', 2),
+        inner('bottom', 8),
+        h('div', { class: 'ak-bank-label', style: { gridColumn: '1 / 3', gridRow: '6' } }, '⬆ 上の輪'),
+        h('div', { class: 'ak-bank-label', style: { gridColumn: '5 / 8', gridRow: '6' } }, '下の輪 ⬇'),
+      ),
     );
+  }
+
+  // 分かれ道で選べる先の説明（ボタン用）
+  function routeLabel(to) {
+    const b = B();
+    if (to === b.bank) return '🏦 銀行へ（その先は反対の輪）';
+    const here = view.players.find(p => p.id === view.turn.p)?.pos;
+    const sq = b.squares[to];
+    const what = sq.k === 'shop' ? sq.name : sq.k === 'chance' ? '福引き' : sq.k === 'season' ? MARK_INFO[sq.mark].name : '';
+    if (here === b.bank) return `${b.loop[to] === 'top' ? '⬆ 上の輪へ' : '⬇ 下の輪へ'}（${what}）`;
+    return `🔁 ${b.loop[to] === 'top' ? '上' : '下'}の輪をもう1周（${what}）`;
   }
 
   // ---- 手番の操作 ----
@@ -147,6 +192,7 @@ export function createUI(root, api) {
       moving: '移動中',
       resolving: '福引き',
       pick: '福引き盤をめくる',
+      route: '分かれ道',
       action: '買う・増資・株',
       debt: '借金を返す',
     }[view.phase];
@@ -169,7 +215,7 @@ export function createUI(root, api) {
 
   function sellStockBox() {
     const mine = me();
-    const owned = AREAS.filter(a => mine.stocks[a]);
+    const owned = view.areas.filter(a => mine.stocks[a]);
     if (!owned.length) return null;
     if (!owned.includes(sellArea)) sellArea = owned[0];
     const max = mine.stocks[sellArea];
@@ -186,7 +232,7 @@ export function createUI(root, api) {
     if (!myTurn()) {
       const t = view.turn;
       if (view.phase === 'over' || !t) return null;
-      return h('div', { class: 'ak-panel muted' }, view.phase === 'pick' ? `${nameOf(t.p)} が福引き盤を選んでいます…` : `${nameOf(t.p)} の手番です`);
+      return h('div', { class: 'ak-panel muted' }, view.phase === 'pick' ? `${nameOf(t.p)} が福引き盤を選んでいます…` : view.phase === 'route' ? `${nameOf(t.p)} が分かれ道で道を選んでいます…` : `${nameOf(t.p)} の手番です`);
     }
     const t = view.turn;
     const mine = me();
@@ -197,6 +243,13 @@ export function createUI(root, api) {
       );
     }
     if (view.phase === 'pick') return h('div', { class: 'ak-panel' }, h('strong', {}, '🎴 福引き盤の伏せ札を1枚タップしてめくってください'));
+    if (view.phase === 'route') {
+      return h('div', { class: 'ak-panel route' },
+        h('strong', {}, `🚏 分かれ道！ どちらへ進みますか？（あと${view.moveLeft ?? '?'}マス）`),
+        h('div', { class: 'ak-row' }, t.options.map(to => h('button', { class: 'btn ak-route-btn', type: 'button', onclick: () => send({ type: 'route', to }) }, routeLabel(to)))),
+        h('div', { class: 'small muted' }, '光っているマスをタップしても選べます'),
+      );
+    }
     if (view.phase === 'debt') {
       const myShops = Object.entries(view.shops).filter(([, s]) => s.owner === view.me);
       return h('div', { class: 'ak-actions' },
@@ -204,22 +257,22 @@ export function createUI(root, api) {
         sellStockBox(),
         myShops.length ? h('div', { class: 'ak-panel' },
           h('div', { class: 'ak-panel-title' }, `🏚️ 店を銀行に売る（価値の${SELL_RATE * 100}%）`),
-          h('div', { class: 'ak-row' }, myShops.map(([i, s]) => h('button', { class: 'btn small', type: 'button', onclick: () => send({ type: 'sellShop', at: Number(i) }) }, `${SQUARES[i].name} ${yen(Math.floor(s.value * SELL_RATE))}`))),
+          h('div', { class: 'ak-row' }, myShops.map(([i, s]) => h('button', { class: 'btn small', type: 'button', onclick: () => send({ type: 'sellShop', at: Number(i) }) }, `${SQ()[i].name} ${yen(Math.floor(s.value * SELL_RATE))}`))),
         ) : null,
       );
     }
     if (view.phase !== 'action') return null;
     const parts = [];
     if (t.buyable !== null) {
-      const sq = SQUARES[t.buyable];
+      const sq = SQ()[t.buyable];
       parts.push(h('div', { class: 'ak-panel' },
         h('div', { class: 'ak-panel-title' }, `🏪 空き店: ${AREA_INFO[sq.area].name}の${sq.name}`),
-        h('div', { class: 'small' }, `同じ町の店が多いほど買物料が上がります（いま${AREA_INFO[sq.area].name}に ${Object.entries(view.shops).filter(([i, s]) => s.owner === view.me && SQUARES[i].area === sq.area).length}軒）`),
+        h('div', { class: 'small' }, `同じ町の店が多いほど買物料が上がります（いま${AREA_INFO[sq.area].name}に ${Object.entries(view.shops).filter(([i, s]) => s.owner === view.me && SQ()[i].area === sq.area).length}軒）`),
         h('button', { class: 'btn primary', type: 'button', disabled: mine.cash < sq.base, onclick: () => send({ type: 'buy' }) }, `${yen(sq.base)}で買う`),
       ));
     }
     if (t.investArea) {
-      const list = Object.entries(view.shops).filter(([i, s]) => s.owner === view.me && (t.investArea === 'all' || SQUARES[i].area === t.investArea) && s.cap > s.value).map(([i]) => Number(i));
+      const list = Object.entries(view.shops).filter(([i, s]) => s.owner === view.me && (t.investArea === 'all' || SQ()[i].area === t.investArea) && s.cap > s.value).map(([i]) => Number(i));
       if (list.length) {
         if (!list.includes(investAt)) investAt = list[0];
         const s = view.shops[investAt];
@@ -227,7 +280,7 @@ export function createUI(root, api) {
         investAmt = Math.min(Math.max(10, investAmt), Math.max(10, max));
         parts.push(h('div', { class: 'ak-panel' },
           h('div', { class: 'ak-panel-title' }, `✨ 増資${t.investArea === 'all' ? '（銀行: どの店でも）' : `（${AREA_INFO[t.investArea].name}の店）`}`),
-          h('div', { class: 'ak-row' }, list.map(i => h('button', { class: ['ak-chip', 'area', investAt === i && 'on'].filter(Boolean).join(' '), type: 'button', style: { borderLeftColor: AREA_INFO[SQUARES[i].area].color }, onclick: () => { investAt = i; render(); } }, `${SQUARES[i].name} ${view.shops[i].value}/${view.shops[i].cap}`))),
+          h('div', { class: 'ak-row' }, list.map(i => h('button', { class: ['ak-chip', 'area', investAt === i && 'on'].filter(Boolean).join(' '), type: 'button', style: { borderLeftColor: AREA_INFO[SQ()[i].area].color }, onclick: () => { investAt = i; render(); } }, `${SQ()[i].name} ${view.shops[i].value}/${view.shops[i].cap}`))),
           h('div', { class: 'ak-row' }, stepper(investAmt, v => { investAmt = v; }, [-100, -10], 10, max),
             h('button', { class: 'btn', type: 'button', disabled: max < 10 || investAmt > max, onclick: () => send({ type: 'invest', at: investAt, amount: investAmt }) }, `${yen(investAmt)}増資`)),
           h('div', { class: 'small muted' }, '店の価値が上がると買物料と、その町の株価が上がります'),
@@ -235,13 +288,13 @@ export function createUI(root, api) {
       }
     }
     if (t.stock) {
-      if (!AREAS.includes(stockArea)) stockArea = 'A';
+      if (!view.areas.includes(stockArea)) stockArea = view.areas[0];
       const price = view.prices[stockArea];
       const max = Math.min(MAX_STOCK_BUY, Math.floor(mine.cash / price));
       stockN = Math.min(Math.max(1, stockN), Math.max(1, max));
       parts.push(h('div', { class: 'ak-panel' },
-        h('div', { class: 'ak-panel-title' }, '📈 株を買う（銀行。1つの町だけ）'),
-        h('div', { class: 'ak-row' }, AREAS.map(a => h('button', { class: ['ak-chip', 'area', stockArea === a && 'on'].filter(Boolean).join(' '), type: 'button', style: { borderLeftColor: AREA_INFO[a].color }, onclick: () => { stockArea = a; render(); } }, `${AREA_INFO[a].name} ${view.prices[a]}G`))),
+        h('div', { class: 'ak-panel-title' }, '📈 株を買う（1つの町だけ）'),
+        h('div', { class: 'ak-row' }, view.areas.map(a => h('button', { class: ['ak-chip', 'area', stockArea === a && 'on'].filter(Boolean).join(' '), type: 'button', style: { borderLeftColor: AREA_INFO[a].color }, onclick: () => { stockArea = a; render(); } }, `${AREA_INFO[a].name} ${view.prices[a]}G`))),
         h('div', { class: 'ak-row' }, stepper(stockN, v => { stockN = v; }, [-10, -1], 1, max),
           h('button', { class: 'btn', type: 'button', disabled: max < 1, onclick: () => send({ type: 'buyStock', area: stockArea, n: stockN }) }, `${stockN}株を${yen(stockN * price)}で買う`)),
         h('div', { class: 'small muted' }, 'その町の店で買物料が払われると配当が入ります'),
@@ -256,8 +309,8 @@ export function createUI(root, api) {
     return h('div', { class: 'ak-panel ak-stocks' },
       h('div', { class: 'ak-panel-title' }, '🏯 町と株価'),
       h('div', { class: 'small muted' }, '株を持っている町の店で買物料が払われると配当が入ります。株価は町の店の価値で上がります。'),
-      AREAS.map(a => {
-        const owners = view.players.filter(p => Object.entries(view.shops).some(([i, s]) => s.owner === p.id && SQUARES[i].area === a));
+      view.areas.map(a => {
+        const owners = view.players.filter(p => Object.entries(view.shops).some(([i, s]) => s.owner === p.id && SQ()[i].area === a));
         const dir = anim.attrs(`price-${a}`, '', 1500) ? priceDir[a] : 0;
         return h('div', withAnim(anim, `price-${a}`, 'fx-flash', 900, { class: 'ak-stock-row', 'data-area': a }),
           h('span', { class: 'ak-area-dot', style: { background: AREA_INFO[a].color } }),
@@ -275,10 +328,10 @@ export function createUI(root, api) {
   }
 
   const shopTotal = id => Object.values(view.shops).reduce((a, s) => a + (s.owner === id ? s.value : 0), 0);
-  const stockTotal = p => AREAS.reduce((a, ar) => a + p.stocks[ar] * view.prices[ar], 0);
+  const stockTotal = p => view.areas.reduce((a, ar) => a + p.stocks[ar] * view.prices[ar], 0);
   // 持っている株（町の色のチップ）
   function stockChips(p) {
-    const owned = AREAS.filter(a => p.stocks[a]);
+    const owned = view.areas.filter(a => p.stocks[a]);
     if (!owned.length) return h('div', { class: 'ak-stock-chips small muted' }, '📈 株なし');
     return h('div', { class: 'ak-stock-chips' }, h('span', { class: 'small' }, '📈'),
       owned.map(a => h('span', withAnim(anim, `stk-${p.id}-${a}`, 'fx-bump', 500, { class: 'ak-stock-chip', style: { borderLeftColor: AREA_INFO[a].color }, title: `${AREA_INFO[a].name}の株 ${p.stocks[a]}株（時価 ${yen(p.stocks[a] * view.prices[a])}）` }), `${AREA_INFO[a].name} `, h('b', {}, p.stocks[a]), '株')));
@@ -305,7 +358,8 @@ export function createUI(root, api) {
         status(),
         h('div', { class: 'ak-main' },
           h('div', { class: 'ak-board-wrap' }, board()),
-          h('div', { class: 'ak-side' }, actions(), seats(), stockTable()),
+          // 8の字の盤では、福引き盤は操作欄のすぐ下（スマホでも盤→操作→福引きの順に並ぶ）
+          h('div', { class: 'ak-side' }, actions(), B().id === 'eight' ? h('div', { class: 'ak-eight-fuku' }, fukuBoard()) : null, seats(), stockTable()),
         ),
         h('details', { open: showRules, ontoggle: e => { showRules = e.target.open; } },
           h('summary', { class: 'small' }, 'ルール・福引きの札'),

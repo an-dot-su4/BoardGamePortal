@@ -405,6 +405,64 @@ const scenarios = {
     const log = await pages[0].locator('.log').innerText();
     assert.ok(log.includes('が出た'), 'サイコロが振られていない');
   },
+
+  async akinai8() {
+    const { pages } = await openGame('あきない通り', ['あき', 'なつ', 'ふゆ'], VIEWPORT, async host => {
+      await host.locator('select').filter({ has: host.locator('option[value="eight"]') }).selectOption('eight');
+      await pause(host, 300);
+    });
+    await pages[0].waitForSelector('.ak-board.eight');
+    let routed = 0;
+    await shot(pages[0], 'akinai8-1-start');
+    let bought = 0;
+    let picked = 0;
+    for (let t = 0; t < 24; t++) {
+      let acted = false;
+      for (const p of pages) {
+        if (!(await has(p, 'text=🟡 あなたの手番'))) continue;
+        acted = true;
+        if (await has(p, 'button:has-text("🎲 サイコロを振る")')) {
+          await p.getByRole('button', { name: '🎲 サイコロを振る' }).click();
+          if (t === 0) {
+            await pause(p, 450);
+            await shot(p, 'akinai8-0-dice');
+          }
+          await pause(p, 250);
+        }
+        for (let k = 0; k < 3 && (await has(p, '.ak-route-btn')); k++) {
+          if (!routed) await shot(p, 'akinai8-route');
+          await p.locator('.ak-route-btn').first().click();
+          routed++;
+          await pause(p, 300);
+        }
+        if (await has(p, '.ak-fuku.picking')) {
+          if (!picked) await shot(p, 'akinai8-2-pick');
+          await p.locator('.ak-fuku.picking button.ak-fk:not([disabled])').first().click();
+          picked++;
+          await pause(p, 250);
+        }
+        const buy = p.locator('.ak-actions button', { hasText: 'で買う' }).first();
+        if ((await buy.count()) && (await buy.isEnabled()) && !(await buy.innerText()).includes('株')) {
+          await buy.click();
+          bought++;
+          await pause(p, 200);
+        }
+        if (t === 6) await shot(p, 'akinai8-3-action');
+        const debt = await has(p, 'text=足りません');
+        if (debt) break;
+        const end = p.getByRole('button', { name: /手番を終える|もう一度振る/ });
+        if (await end.count()) await end.click();
+        await pause(p, 200);
+        break;
+      }
+      if (!acted) await pause(pages[0], 200);
+    }
+    await shot(pages[1], 'akinai8-4-later');
+    assert.ok(bought > 0, '店を1軒も買えていない');
+    assert.ok(routed > 0, '分かれ道で道を選んでいない');
+    const log = await pages[0].locator('.log').innerText();
+    assert.ok(log.includes('が出た'), 'サイコロが振られていない');
+  },
 };
 
 try {
