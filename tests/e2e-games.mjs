@@ -289,6 +289,44 @@ const scenarios = {
     await p.waitForSelector('text=の勝ち！', { timeout: 20000 });
   },
 
+  async shima() {
+    const { pages } = await openGame('島ひらき', ['うみ', 'やま']);
+    // 準備: 自分の番の人が、光っている角・辺をタップ
+    for (let k = 0; k < 8; k++) {
+      let done = false;
+      for (const p of pages) {
+        if (await has(p, 'text=🟡 準備')) {
+          await p.locator('.sh-board .sh-hit').first().dispatchEvent('click');
+          await pause(p, 150);
+          done = true;
+          break;
+        }
+      }
+      if (!done) await pause(pages[0], 200);
+    }
+    await pages[0].waitForSelector('text=ラウンド目');
+    await shot(pages[0], 'shima-1-start');
+    // 何手番か: 建てられれば道を建て、市場で買えれば買い、手番を終える
+    for (let t = 0; t < 8; t++) {
+      for (const p of pages) {
+        if (!(await has(p, 'text=🟡 あなたの手番'))) continue;
+        const road = p.locator('button.sh-build', { hasText: '道' });
+        if (await road.isEnabled()) {
+          await road.click();
+          await p.waitForSelector('.sh-board .sh-hit', { state: 'attached' });
+          await p.locator('.sh-board .sh-hit').first().dispatchEvent('click');
+          await pause(p, 150);
+        }
+        if (t === 3) await shot(p, 'shima-2-turn');
+        await p.getByRole('button', { name: '手番を終える' }).click();
+        await pause(p, 150);
+        break;
+      }
+    }
+    const log = await pages[0].locator('.log').innerText();
+    assert.ok(log.includes('の季節') || log.includes('台風'), '季節札がめくられていない');
+  },
+
   async oekaki() {
     const names = ['え', 'が', 'く'];
     const { pages } = await openGame('お絵描き伝言', names);

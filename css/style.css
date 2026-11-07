@@ -516,3 +516,46 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
   .gl-board-wrap { max-height: none; }
   .gl-stage { min-height: 112px; }
 }
+
+/* ---- 島ひらき ---- */
+.sh-table { display: grid; gap: 10px; padding: 10px; }
+.sh-status { display: grid; gap: 4px; }
+.sh-cards { display: flex; gap: 8px; flex-wrap: wrap; }
+.sh-card { background: rgb(255 255 255 / 0.9); color: #2b2620; border-radius: 10px; padding: 4px 10px; display: grid; min-width: 120px; }
+.sh-card + .sh-card { opacity: 0.8; }
+.sh-card.typhoon { background: #cfd8e8; }
+.sh-main { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 760px) { .sh-main { grid-template-columns: 1fr; } }
+.sh-board-wrap { width: 100%; max-width: 420px; margin: 0 auto; }
+.sh-board { width: 100%; height: auto; display: block; touch-action: manipulation; }
+.sh-board .sh-hit, .sh-board .sh-pick { cursor: pointer; }
+.sh-board .sh-spot { animation: sh-blink 1s ease-in-out infinite alternate; }
+@keyframes sh-blink { from { opacity: 0.55; } to { opacity: 1; } }
+.sh-side { display: grid; gap: 8px; }
+.sh-panel { background: rgb(0 0 0 / 0.2); border-radius: 12px; padding: 8px; display: grid; gap: 6px; }
+.sh-panel-title { font-weight: 800; }
+.sh-res { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.sh-res-item { background: rgb(255 255 255 / 0.9); color: #2b2620; border-radius: 10px; padding: 4px; display: grid; justify-items: center; font-size: 1.1rem; }
+.sh-res-item b { font-size: 1.2rem; }
+.sh-res-item small { font-size: 0.7rem; }
+.sh-builds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.sh-build { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; font-size: 0.85rem; }
+.sh-build small { font-size: 0.7rem; }
+.sh-end { justify-self: stretch; }
+.sh-prices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 10px; font-size: 0.85rem; }
+.sh-price { display: flex; align-items: center; gap: 3px; }
+.sh-meter { flex: 1; height: 5px; border-radius: 3px; background: rgb(255 255 255 / 0.2); overflow: hidden; }
+.sh-meter i { display: block; height: 100%; background: #ffd36b; }
+.sh-market-row, .sh-trade-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.sh-chip { border: 2px solid transparent; background: #fff; color: #2b2620; border-radius: 8px; min-width: 32px; height: 32px; font: inherit; cursor: pointer; }
+.sh-chip.on { border-color: #e8524a; background: #fff3e8; }
+.sh-step { display: inline-flex; align-items: center; gap: 2px; background: rgb(255 255 255 / 0.12); border-radius: 8px; padding: 2px; }
+.sh-step .sh-chip { min-width: 26px; height: 26px; }
+.sh-offer { border: 2px solid #ffd36b; }
+.sh-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 4px; border: 2px solid #fff; vertical-align: -1px; }
+.sh-trade-grid { display: grid; grid-template-columns: auto auto auto; gap: 4px 10px; align-items: center; justify-content: start; }
+.sh-step b { min-width: 1.4em; text-align: center; }
+@media (max-width: 480px) {
+  .sh-builds { grid-template-columns: repeat(2, 1fr); }
+  .sh-build { font-size: 0.9rem; }
+}
