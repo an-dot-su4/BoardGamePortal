@@ -566,7 +566,18 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .ak-dice { font-size: 2.6rem; line-height: 1; display: inline-block; }
 @keyframes ak-roll { 0% { transform: rotate(-200deg) scale(0.4); } 70% { transform: rotate(20deg) scale(1.2); } 100% { transform: none; } }
 .ak-roll { animation: ak-roll 0.6s ease-out both; }
-.ak-main { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 12px; align-items: start; }
+@keyframes ak-tumble {
+  0% { transform: translateY(-14px) rotate(-30deg); } 20% { transform: translateY(0) rotate(160deg); } 40% { transform: translateY(-8px) rotate(300deg); }
+  60% { transform: translateY(0) rotate(400deg); } 80% { transform: translateY(-3px) rotate(350deg); } 100% { transform: none; }
+}
+.ak-tumble { animation: ak-tumble 1.1s ease-out both; }
+.ak-roll-spot { min-width: 160px; }
+.ak-bigdie { font-size: 5rem; line-height: 1; display: inline-block; color: #2b2620; }
+@keyframes ak-shake-die { 0% { transform: translate(-6px, -10px) rotate(-25deg); } 25% { transform: translate(5px, 0) rotate(20deg); } 50% { transform: translate(-4px, -6px) rotate(-15deg); } 75% { transform: translate(6px, 2px) rotate(25deg); } 100% { transform: translate(-6px, -10px) rotate(-25deg); } }
+.ak-bigdie.rolling { animation: ak-shake-die 0.28s linear infinite; }
+@keyframes ak-land { 0% { transform: scale(1.5); } 50% { transform: scale(0.9); } 100% { transform: scale(1); } }
+.ak-bigdie.landed { animation: ak-land 0.35s ease-out both; color: #e8524a; }
+.ak-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 260px); gap: 12px; align-items: start; }
 @media (max-width: 860px) { .ak-main { grid-template-columns: 1fr; } }
 .ak-board-wrap { width: 100%; max-width: 560px; margin: 0 auto; }
 .ak-board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 2px; aspect-ratio: 1; }
@@ -630,6 +641,13 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .ak-area-name { min-width: 4.5em; }
 .ak-hold { font-weight: 800; margin-right: 4px; }
 .ak-owners { margin-left: auto; display: inline-flex; gap: 2px; }
+.ak-my-stock { flex-basis: 100%; font-weight: 800; color: #ffd36b; font-size: 0.9rem; padding-left: 18px; }
+.ak-holders { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 3px; padding-left: 18px; }
+.ak-holders:empty { display: none; }
+.ak-holder { color: #fff; border-radius: 6px; padding: 0 6px; font-size: 0.75rem; font-weight: 700; }
+.ak-stock-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin: 2px 0; }
+.ak-stock-chip { background: #fff; color: #2b2620; border-radius: 6px; border-left: 5px solid; padding: 0 5px; font-size: 0.75rem; }
+.ak-mine-stock { position: absolute; top: 4px; right: 1px; font-size: 0.8em; line-height: 1; }
 .ak-own-dot, .ak-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; }
 .ak-dot { width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; }
 .ak-seats { margin: 0; }
@@ -678,5 +696,5 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .fx-up { color: #ff8a7a; }
 .fx-down { color: #8ad8ff; }
 @media (prefers-reduced-motion: reduce) {
-  .fx-pop, .fx-bump, .fx-flip, .fx-glow, .fx-slide, .fx-shake, .fx-flash, .fx-draw, .ak-roll, .ak-fuku.picking .ak-fk { animation: none; }
+  .fx-pop, .fx-bump, .fx-flip, .fx-glow, .fx-slide, .fx-shake, .fx-flash, .fx-draw, .ak-roll, .ak-tumble, .ak-bigdie, .ak-fuku.picking .ak-fk { animation: none; }
 }

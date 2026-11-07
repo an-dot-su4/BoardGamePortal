@@ -39,6 +39,7 @@ export function createUI(root, api) {
   let busyUntil = 0; // 演出の予定がここまで埋まっている
   const hidden = {}; // 動いている途中のコマ（p → 見えるようになる時刻）
   const priceDir = {};
+  let rollSeq = 0; // 最後に再生したサイコロの出来事（上部のサイコロを転がす用）
   // 画面だけの状態
   let investAt = null;
   let investAmt = 50;
@@ -78,6 +79,7 @@ export function createUI(root, api) {
         title: `${area.name}・${sq.name}（価値 ${s.value}G・買物料 ${s.fee}G・上限 ${s.cap}G）${owner ? `／${nameOf(owner)}の店` : '／空き店'}`,
       }),
       h('span', { class: 'ak-band', style: { background: area.color } }),
+      me()?.stocks[sq.area] ? h('span', { class: 'ak-mine-stock', title: 'あなたはこの町の株を持っています（ここで買物料が払われると配当）' }, '📈') : null,
       h('span', { class: 'ak-name' }, sq.name),
       h('b', { class: 'ak-val' }, s.value),
       owner ? h('span', { class: 'ak-fee' }, `買${s.fee}`) : h('span', { class: 'ak-fee muted' }, '空き'),
@@ -139,7 +141,7 @@ export function createUI(root, api) {
       );
     }
     const t = view.turn;
-    const roll = t.roll ? h('span', withAnim(anim, `dice-${view.seq}`, 'ak-roll', 600, { class: 'ak-dice' }), DICE[t.roll]) : null;
+    const roll = t.roll ? h('span', withAnim(anim, `dice-${rollSeq}`, 'ak-tumble', 1100, { class: 'ak-dice' }), DICE[t.roll]) : null;
     const what = {
       roll: 'サイコロを振る前',
       moving: '移動中',
@@ -250,8 +252,10 @@ export function createUI(root, api) {
   }
 
   function stockTable() {
+    const mine = me();
     return h('div', { class: 'ak-panel ak-stocks' },
       h('div', { class: 'ak-panel-title' }, '🏯 町と株価'),
+      h('div', { class: 'small muted' }, '株を持っている町の店で買物料が払われると配当が入ります。株価は町の店の価値で上がります。'),
       AREAS.map(a => {
         const owners = view.players.filter(p => Object.entries(view.shops).some(([i, s]) => s.owner === p.id && SQUARES[i].area === a));
         const dir = anim.attrs(`price-${a}`, '', 1500) ? priceDir[a] : 0;
@@ -260,11 +264,24 @@ export function createUI(root, api) {
           h('span', { class: 'ak-area-name' }, AREA_INFO[a].name),
           h('b', {}, `${view.prices[a]}G`),
           dir ? h('b', { class: dir > 0 ? 'fx-up' : 'fx-down' }, dir > 0 ? '▲' : '▼') : null,
-          h('span', { class: 'small' }, view.players.filter(p => p.stocks[a]).map(p => h('span', { class: 'ak-hold', style: { color: colorOf(p.id) } }, `●${p.stocks[a]}`))),
-          h('span', { class: 'small muted ak-owners' }, owners.map(p => h('span', { class: 'ak-own-dot', style: { background: colorOf(p.id) } }))),
+          h('span', { class: 'small muted ak-owners', title: 'この町に店を持っている人' }, owners.length ? '店:' : '', owners.map(p => h('span', { class: 'ak-own-dot', style: { background: colorOf(p.id) } }))),
+          mine?.stocks[a]
+            ? h('div', withAnim(anim, `stk-${mine.id}-${a}`, 'fx-bump', 500, { class: 'ak-my-stock' }), `📈 あなた ${mine.stocks[a]}株（時価 ${yen(mine.stocks[a] * view.prices[a])}）`)
+            : null,
+          h('div', { class: 'ak-holders' }, view.players.filter(p => p.stocks[a] && p.id !== view.me).map(p => h('span', { class: 'ak-holder', style: { background: colorOf(p.id) } }, `${p.name} ${p.stocks[a]}株`))),
         );
       }),
     );
+  }
+
+  const shopTotal = id => Object.values(view.shops).reduce((a, s) => a + (s.owner === id ? s.value : 0), 0);
+  const stockTotal = p => AREAS.reduce((a, ar) => a + p.stocks[ar] * view.prices[ar], 0);
+  // 持っている株（町の色のチップ）
+  function stockChips(p) {
+    const owned = AREAS.filter(a => p.stocks[a]);
+    if (!owned.length) return h('div', { class: 'ak-stock-chips small muted' }, '📈 株なし');
+    return h('div', { class: 'ak-stock-chips' }, h('span', { class: 'small' }, '📈'),
+      owned.map(a => h('span', withAnim(anim, `stk-${p.id}-${a}`, 'fx-bump', 500, { class: 'ak-stock-chip', style: { borderLeftColor: AREA_INFO[a].color }, title: `${AREA_INFO[a].name}の株 ${p.stocks[a]}株（時価 ${yen(p.stocks[a] * view.prices[a])}）` }), `${AREA_INFO[a].name} `, h('b', {}, p.stocks[a]), '株')));
   }
 
   function seats() {
@@ -273,6 +290,8 @@ export function createUI(root, api) {
         h('div', { class: 'name' }, h('span', { class: 'ak-dot', style: { background: colorOf(p.id) } }), p.bot ? '🤖 ' : '', p.name, h('small', { class: 'muted' }, ` 段位${p.level}`)),
         h('div', { class: 'small' }, '現金 ', h('b', { 'data-cash': p.id }, yen(p.cash)), `・店${p.shops}軒`),
         h('div', { class: 'small' }, `資産 ${yen(p.worth)}`, h('span', { class: 'ak-meter' }, h('i', { style: { width: `${Math.min(100, (p.worth / view.goal) * 100)}%`, background: colorOf(p.id) } }))),
+        h('div', { class: 'small muted' }, `内訳: 現金 ${yen(p.cash)}・店 ${yen(shopTotal(p.id))}・株 ${yen(stockTotal(p))}`),
+        stockChips(p),
         h('div', { class: 'ak-marks' }, MARKS.map(m => h('span', { class: ['ak-mark', p.marks.includes(m) && 'on'].filter(Boolean).join(' '), 'data-mark': `${p.id}-${m}`, title: MARK_INFO[m].name }, MARK_INFO[m].icon)),
           h('small', { class: 'muted' }, ` 給料 ${yen(p.salary)}`)),
       )),
@@ -310,14 +329,42 @@ export function createUI(root, api) {
   const money = (p, d, delay = 0, extra = '') => floatText(seatEl(p), `${d > 0 ? '+' : ''}${d}G${extra}`, { color: d > 0 ? '#ffd36b' : '#ff8a7a', delay });
   const spot = (icon, text, sub) => spotlight(h('div', { class: 'ak-spot' }, h('div', { class: 'ak-spot-icon' }, icon), h('div', { class: 'ak-spot-text' }, text), sub ? h('div', { class: 'ak-spot-sub' }, sub) : null), { duration: 1400 });
 
+  // 画面の中央でサイコロが転がり、面がだんだんゆっくり変わって出目で止まる
+  function rollDice(e) {
+    const face = h('div', { class: 'ak-bigdie rolling' }, DICE[1 + Math.floor(Math.random() * 6)]);
+    const text = h('div', { class: 'ak-spot-text' }, '　');
+    spotlight(h('div', { class: 'ak-spot ak-roll-spot' }, face, text, h('div', { class: 'ak-spot-sub' }, `${nameOf(e.p)} のサイコロ`)), { duration: 1900 });
+    let wait = 60;
+    let elapsed = 0;
+    let last = 0;
+    const tick = () => {
+      if (elapsed >= 850) {
+        face.textContent = DICE[e.n];
+        face.classList.remove('rolling');
+        face.classList.add('landed');
+        text.textContent = `${e.n}！`;
+        return;
+      }
+      let n;
+      do n = 1 + Math.floor(Math.random() * 6); while (n === last);
+      last = n;
+      face.textContent = DICE[n];
+      elapsed += wait;
+      wait = Math.round(wait * 1.18);
+      later(wait, tick);
+    };
+    tick();
+  }
+
   // 出来事1つを再生して、かかる時間（ミリ秒）を返す
   function play(e) {
     switch (e.k) {
       case 'roll':
+        rollSeq = e.seq;
         anim.start(`dice-${e.seq}`);
         render();
-        spot(DICE[e.n], `${e.n}`, `${nameOf(e.p)} のサイコロ`);
-        return 700;
+        rollDice(e);
+        return DUR.roll;
       case 'move': {
         const step = 170;
         hidden[e.p] = performance.now() + step * (e.path.length - 1) + 200;
@@ -357,6 +404,8 @@ export function createUI(root, api) {
         money(e.to, e.amount, 600);
         return 800;
       case 'div':
+        anim.start(`stk-${e.p}-${e.area}`);
+        render();
         fly(root.querySelector(`.ak-stock-row[data-area="${e.area}"]`), seatEl(e.p), '💹', { duration: 600 });
         money(e.p, e.amount, 400, ' 配当');
         return 350;
@@ -366,6 +415,8 @@ export function createUI(root, api) {
         floatText(sqEl(e.at), `${e.bonus ? '🏮' : '✨'}+${e.amount}`, { color: '#ffe680' });
         return e.bonus ? 250 : 450;
       case 'stock':
+        anim.started.delete(`stk-${e.p}-${e.area}`);
+        anim.start(`stk-${e.p}-${e.area}`);
         markPrice(e.area);
         floatText(root.querySelector(`.ak-stock-row[data-area="${e.area}"]`), `${e.buy ? '📈' : '📉'} ${e.n}株`, { color: '#fff' });
         if (e.amount) money(e.p, e.buy ? -e.amount : e.amount, 300);
@@ -426,6 +477,8 @@ export function createUI(root, api) {
     const now = performance.now();
     let t = Math.max(0, Math.min(busyUntil - now, 2500));
     for (const e of fresh) {
+      // 移動の演出が始まるまで、コマを移動先に先回りして出さない
+      if (e.k === 'move' || e.k === 'warp') hidden[e.p] = Math.max(hidden[e.p] ?? 0, now + t + durationOf(e) + 100);
       later(t, () => {
         try {
           play(e);
@@ -439,7 +492,7 @@ export function createUI(root, api) {
     later(t + 1600, render); // 演出の CSS が終わったら描き直す
   }
 
-  const DUR = { roll: 700, warp: 750, mark: 300, salary: 1500, buy: 500, fee: 800, div: 350, stock: 500, card: 1300, bingo: 1800, money: 350, price: 500, newboard: 600, sell: 500, bankrupt: 1300, win: 1500 };
+  const DUR = { roll: 1500, warp: 750, mark: 300, salary: 1500, buy: 500, fee: 800, div: 350, stock: 500, card: 1300, bingo: 1800, money: 350, price: 500, newboard: 600, sell: 500, bankrupt: 1300, win: 1500 };
   function durationOf(e) {
     if (e.k === 'move') return 170 * (e.path.length - 1) + 150;
     if (e.k === 'invest') return e.bonus ? 250 : 450;

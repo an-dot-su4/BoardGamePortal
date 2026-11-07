@@ -372,6 +372,10 @@ const scenarios = {
         acted = true;
         if (await has(p, 'button:has-text("🎲 サイコロを振る")')) {
           await p.getByRole('button', { name: '🎲 サイコロを振る' }).click();
+          if (t === 0) {
+            await pause(p, 450);
+            await shot(p, 'akinai-0-dice');
+          }
           await pause(p, 250);
         }
         if (await has(p, '.ak-fuku.picking')) {
