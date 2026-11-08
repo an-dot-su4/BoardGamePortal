@@ -5,6 +5,7 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { GAMES } from '../games/registry.js';
 
 const PORT = 8138;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -55,7 +56,9 @@ async function openGame(gameName, names, viewport = VIEWPORT, beforeStart = null
     pages.push(page);
   }
   const [host, ...guests] = pages;
-  await host.goto(`${BASE}/?local=1`);
+  // 試作ゲーム（trial）はメインのポータルではなく試作ページ（lab.html）に並ぶ
+  const trial = GAMES.find(g => g.name === gameName)?.trial;
+  await host.goto(`${BASE}/${trial ? 'lab.html' : ''}?local=1`);
   await host.fill('#name', names[0]);
   await host.locator('.game-card').filter({ has: host.locator('h3', { hasText: new RegExp(`^${gameName}$`) }) })
     .getByRole('button', { name: '部屋を作る' }).click();

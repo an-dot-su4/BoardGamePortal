@@ -1,5 +1,5 @@
 // ポータル（トップページ）
-import { GAMES, MODE_LABEL, findGame } from '../games/registry.js';
+import { MAIN_GAMES, MODE_LABEL, TRIAL_GAMES, findGame } from '../games/registry.js';
 import { h, normalizeCode, playersLabel, randomCode } from './util.js';
 import {
   cleanName, hostRecord, playerName, playerPass, pruneHostRecords, recentRooms, saveHostRecord, setPlayerName, setPlayerPass,
@@ -56,22 +56,36 @@ codeInput.addEventListener('input', () => {
   codeInput.value = codeInput.value.toUpperCase();
 });
 
+// index.html はメインのゲーム、lab.html（body の data-page="lab"）は試作ゲームを並べる
+const isLab = document.body.dataset.page === 'lab';
 const games = document.getElementById('games');
-for (const game of GAMES) {
-  games.appendChild(
-    h('article', { class: 'panel game-card' },
-      h('div', { class: 'title' }, h('span', { class: 'icon' }, game.icon), h('h3', {}, game.name)),
-      h('div', { class: 'meta' },
-        h('span', { class: `tag ${game.mode}` }, MODE_LABEL[game.mode]),
-        h('span', { class: 'tag' }, playersLabel(game)),
-        h('span', { class: 'tag' }, game.time),
-      ),
-      h('p', {}, game.summary),
-      h('details', { class: 'rules' }, h('summary', {}, 'ルールを見る'), h('ol', {}, game.rules.map(r => h('li', {}, r))), gameLinks(game)),
-      gameLinks(game),
-      h('div', { class: 'actions' },
-        h('button', { class: 'btn primary', type: 'button', onclick: () => createRoom(game.id) }, '部屋を作る'),
-      ),
+const list = isLab ? TRIAL_GAMES : MAIN_GAMES;
+for (const game of list) games.appendChild(renderGameCard(game));
+if (isLab && !list.length) games.appendChild(h('p', { class: 'muted' }, 'いまは確認待ちの試作ゲームはありません。'));
+
+// メインのページから試作ページへの案内（件数つき）
+const labLink = document.getElementById('lab-link');
+if (labLink) {
+  labLink.href = `lab.html${passthrough}`;
+  labLink.textContent = `🧪 試作ゲーム（確認待ち ${TRIAL_GAMES.length}件）`;
+}
+const homeLink = document.getElementById('home-link');
+if (homeLink) homeLink.href = `./${passthrough}`;
+
+function renderGameCard(game) {
+  return h('article', { class: 'panel game-card' },
+    h('div', { class: 'title' }, h('span', { class: 'icon' }, game.icon), h('h3', {}, game.name)),
+    h('div', { class: 'meta' },
+      game.trial ? h('span', { class: 'tag trial' }, `🧪 試作 ${game.addedAt ?? ''}`) : null,
+      h('span', { class: `tag ${game.mode}` }, MODE_LABEL[game.mode]),
+      h('span', { class: 'tag' }, playersLabel(game)),
+      h('span', { class: 'tag' }, game.time),
+    ),
+    h('p', {}, game.summary),
+    h('details', { class: 'rules' }, h('summary', {}, 'ルールを見る'), h('ol', {}, game.rules.map(r => h('li', {}, r))), gameLinks(game)),
+    gameLinks(game),
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn primary', type: 'button', onclick: () => createRoom(game.id) }, '部屋を作る'),
     ),
   );
 }

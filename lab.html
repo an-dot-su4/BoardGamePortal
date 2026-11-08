@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>試作ゲーム｜ボドゲポータル</title>
+  <meta name="description" content="ボドゲポータルの試作ゲーム（確認待ち）">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="lab">
+  <header class="site-header">
+    <a class="brand" href="./">🎲 ボドゲポータル</a>
+    <span class="spacer"></span>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h1>🧪 試作ゲーム（確認待ち）</h1>
+      <p>毎日1つずつ追加される、まだメインに並べていないゲームです。遊んでみて、よければメインのポータルに移します。</p>
+      <p class="small"><a id="home-link" href="./">← メインのポータルに戻る</a></p>
+    </section>
+
+    <form class="panel join-box" id="join-form">
+      <div class="field">
+        <label for="name">あなたの名前</label>
+        <input class="input" id="name" maxlength="12" autocomplete="nickname" placeholder="例: たろう" required>
+      </div>
+      <div class="field">
+        <label for="pass">合言葉（任意）</label>
+        <input class="input" id="pass" maxlength="20" autocomplete="off" placeholder="なしでもOK">
+      </div>
+      <div class="field">
+        <label for="code">部屋番号で参加</label>
+        <input class="input code-input" id="code" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ABCD">
+      </div>
+      <button class="btn primary" type="submit">参加する</button>
+    </form>
+
+    <div id="recent-wrap" hidden>
+      <h2 class="section-title">最近の部屋</h2>
+      <div class="recent" id="recent"></div>
+    </div>
+
+    <h2 class="section-title">試作ゲーム（新しい順）</h2>
+    <p class="panel small lab-note">試作なので、ルールのバランスや画面に粗があるかもしれません。遊び方はメインのゲームと同じです（部屋を作って部屋番号を送る）。</p>
+    <div class="games" id="games"></div>
+
+    <h2 class="section-title">遊び方</h2>
+    <div class="panel howto">
+      <ol>
+        <li>名前を入れて、遊びたいゲームの「部屋を作る」を押す（あなたがホストになります）。</li>
+        <li>表示された部屋番号か招待リンクを、LINE などで友だちに送る。</li>
+        <li>友だちはこのページで部屋番号を入れて参加。全員そろったらホストが「開始」。</li>
+      </ol>
+      <p class="small muted">
+        ホストのブラウザがゲームの進行役になります。ホストはなるべく安定した回線（Wi-Fi）で、ゲーム中はページを閉じないでください。
+        通信が切れても、同じブラウザで同じ部屋を開き直せば続きから再開できます。
+      </p>
+      <p class="small muted">
+        合言葉（任意）を設定すると、あなたの席には同じ合言葉を知っている人しか入れなくなります。
+        別の端末に乗り換えるときも、同じ名前と合言葉で入れば元の席に戻れます。
+      </p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    ブラウザ同士が直接つながる仕組み（WebRTC）で動いています。サーバーにゲーム内容は保存されません。
+  </footer>
+
+  <script type="module" src="js/portal.js"></script>
+</body>
+</html>
