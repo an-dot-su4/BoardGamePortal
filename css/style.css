@@ -114,6 +114,7 @@ button, input, select { font: inherit; color: inherit; }
 }
 .tag.competitive { background: var(--accent-soft); color: var(--accent); }
 .tag.cooperative { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.tag.trial { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
 
 /* ---- ポータル ---- */
 .hero { padding: 28px 0 8px; }
@@ -124,6 +125,9 @@ button, input, select { font: inherit; color: inherit; }
 @media (max-width: 640px) { .join-box { grid-template-columns: 1fr; } }
 
 .section-title { font-size: 1.1rem; margin: 28px 0 12px; }
+/* 試作ゲームのページへの案内 */
+.lab-link { margin: 16px 0 0; text-align: right; }
+.lab-note { border-left: 4px solid var(--warn); }
 
 .games { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
 .game-card { display: grid; gap: 8px; align-content: start; }

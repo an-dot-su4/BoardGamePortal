@@ -1,5 +1,7 @@
 // ポータルに並ぶゲームの一覧。新しいゲームはここに1件追加する。
 // logic: ルール（ホストだけが実行する）  ui: 画面（全員が実行する）
+// trial: true の項目は「試作ゲーム」（lab.html）にだけ並ぶ。毎日のルーティンが作った確認待ちのゲーム。
+//   addedAt: 'YYYY-MM-DD'（試作を作った日・JST）を一緒に書く。ユーザーが OK したら両方を消してメインに昇格する。
 export const GAMES = [
   {
     id: 'daifugo',
@@ -237,6 +239,11 @@ export const GAMES = [
   },
 ];
 
+// メインのポータルに並ぶゲーム／試作ページに並ぶゲーム（新しい順）
+export const MAIN_GAMES = GAMES.filter(g => !g.trial);
+export const TRIAL_GAMES = GAMES.filter(g => g.trial).sort((a, b) => (b.addedAt ?? '').localeCompare(a.addedAt ?? ''));
+
+// 試作の部屋も開けるよう、全件から探す
 export function findGame(id) {
   return GAMES.find(g => g.id === id) ?? null;
 }

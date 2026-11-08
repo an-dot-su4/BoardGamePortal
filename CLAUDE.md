@@ -4,12 +4,20 @@
 サーバーは持たない。部屋を作った人（ホスト）のブラウザが進行役になり、参加者とは WebRTC（Trystero）で直接つながる。
 
 ユーザーは「〇〇のゲームを追加して」と頼んでくる。そのときは `.claude/skills/add-game/SKILL.md` の手順に従う。
+
+## 試作ゲーム（lab.html）
+
+- 毎日のルーティンが `daily-game` スキルで、まだないゲームを1日1つ作る。それらは registry で `trial: true, addedAt: 'YYYY-MM-DD'` が付き、
+  メインのポータル（index.html）には出ず、試作ページ `lab.html` にだけ並ぶ（`MAIN_GAMES` / `TRIAL_GAMES`。部屋のゲーム切り替えも試作どうしだけ）。
+- ユーザーが「〇〇をOK」「〇〇はNG」と言ったら `promote-game` スキルで昇格・却下する。記録は `docs/daily-game-ideas.md`。
+- ユーザーが直接「〇〇を追加して」と頼んだゲームは、従来どおり試作を経ずにメインに出す。
 画面の文言・コメント・ドキュメントは日本語で書く。
 
 ## 構成
 
 ```
 index.html / js/portal.js   ポータル（ゲーム一覧・部屋を作る・部屋番号で参加）
+lab.html                    試作ゲームのページ（portal.js を共用。body の data-page="lab" で試作だけ並べる）
 room.html  / js/room.js     部屋（ロビー・プレイヤー一覧・チャット・ホスト操作）。ゲーム中の画面は各ゲームの ui.js に任せる
 js/host.js                  Host（ホスト側の進行役。正しい状態を持ち、各人に view だけ送る）と Guest（参加者側）
 js/net.js                   通信。本番は Trystero、?local=1 なら同じブラウザのタブ間（BroadcastChannel）

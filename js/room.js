@@ -1,6 +1,6 @@
 // 部屋ページ。ロビー・プレイヤー一覧・チャットなどの共通部分を担当し、
 // ゲーム中の画面は各ゲームの ui.js に任せる。
-import { findGame, GAMES, MODE_LABEL } from '../games/registry.js';
+import { findGame, MAIN_GAMES, MODE_LABEL, TRIAL_GAMES } from '../games/registry.js';
 import { connect, isLocalMode } from './net.js';
 import { Guest, Host } from './host.js';
 import { h, normalizeCode, passHash, playersLabel } from './util.js';
@@ -174,7 +174,8 @@ function renderHostControls() {
     const count = room.players.length;
     const ok = count >= game.minPlayers && count <= game.maxPlayers && !room.optionsError;
     const select = h('select', { class: 'input', onchange: e => client.setGame(e.target.value), 'aria-label': 'ゲーム' },
-      GAMES.map(g => h('option', { value: g.id, selected: g.id === room.gameId }, `${g.icon} ${g.name}`)),
+      // 試作の部屋では試作どうし、メインの部屋ではメインどうしで切り替える
+      (game.trial ? TRIAL_GAMES : MAIN_GAMES).map(g => h('option', { value: g.id, selected: g.id === room.gameId }, `${g.icon} ${g.name}`)),
     );
     // replaceChildren は null を「null」という文字にしてしまうので取り除く
     const items = [
