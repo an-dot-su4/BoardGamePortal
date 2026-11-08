@@ -466,6 +466,57 @@ const scenarios = {
     const log = await pages[0].locator('.log').innerText();
     assert.ok(log.includes('が出た'), 'サイコロが振られていない');
   },
+  async pitari() {
+    const { pages } = await openGame('ぴたりトリック', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let bids = 0, plays = 0, shotPlay = false, shotRound = false;
+    for (let i = 0; i < 600; i++) {
+      if (await has(pages[0], 'text=最終結果')) break;
+      let acted = false;
+      for (const p of pages) {
+        const bid = p.locator('button.pt-bid:not([disabled])');
+        if (await bid.count()) {
+          if (!bids) await shot(p, 'pitari-1-bid');
+          await bid.first().click();
+          bids++;
+          acted = true;
+          break;
+        }
+        const card = p.locator('.hand button.pcard:not([disabled])');
+        if (await card.count()) {
+          if (!shotPlay && plays >= 4) {
+            await shot(p, 'pitari-2-play');
+            shotPlay = true;
+          }
+          await card.first().click();
+          plays++;
+          acted = true;
+          break;
+        }
+        const next = p.getByRole('button', { name: '次のラウンドへ' });
+        if (await next.count()) {
+          if (!shotRound) {
+            await shot(p, 'pitari-3-round');
+            shotRound = true;
+          }
+          await next.click();
+          acted = true;
+          break;
+        }
+      }
+      if (acted) await pause(pages[0], 80);
+      else await pause(pages[0], 250);
+    }
+    await pages[1].waitForSelector('text=最終結果');
+    await shot(pages[1], 'pitari-4-end');
+    assert.ok(bids >= 14 && plays >= 56, `宣言 ${bids}・出した ${plays}`);
+    const log = await pages[0].locator('.log').innerText();
+    assert.match(log, /さんの勝ち/);
+    await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
+    await pages[1].waitForSelector('text=第1ラウンド');
+  },
 };
 
 try {
