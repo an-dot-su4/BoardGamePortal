@@ -732,3 +732,31 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .pt-scroll { overflow-x: auto; }
 .pt-scores table { border-collapse: collapse; font-size: 0.85rem; }
 .pt-scores th, .pt-scores td { padding: 2px 8px; border-bottom: 1px solid rgb(255 255 255 / 0.15); white-space: nowrap; text-align: center; }
+
+/* ---- うそつきダイス ---- */
+.ud-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.ud-mine { padding: 8px 0; gap: 8px; }
+.ud-die {
+  width: 40px; height: 40px; border-radius: 8px; background: var(--card); color: var(--card-ink);
+  display: inline-grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 5px; box-sizing: border-box;
+  box-shadow: 0 2px 3px rgb(0 0 0 / 0.3); flex: none; vertical-align: middle;
+}
+.ud-die i { display: block; }
+.ud-die i.pip { background: #222; border-radius: 50%; margin: 1px; }
+.ud-die.one i.pip { background: #d23b3b; transform: scale(1.3); }
+.ud-die.small { width: 26px; height: 26px; padding: 3px; border-radius: 5px; }
+.ud-die.small i.pip { margin: 0.5px; }
+.ud-die.hidden { display: inline-flex; align-items: center; justify-content: center; background: #6b4f3a; color: #f3e3c8; font-weight: 800; font-size: 0.8rem; }
+.ud-die.hit { outline: 3px solid #ffd36b; }
+.ud-bids { margin: 6px 0 0; padding-left: 1.4em; display: grid; gap: 4px; }
+.ud-bids li { opacity: 0.75; }
+.ud-bids li.last { opacity: 1; font-weight: 800; }
+.ud-bid { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; flex-wrap: wrap; }
+.ud-face { background: transparent; border: 2px solid transparent; border-radius: 8px; padding: 2px; cursor: pointer; }
+.ud-face.sel { border-color: #ffd36b; background: rgb(255 211 107 / 0.2); }
+.ud-face:disabled { opacity: 0.3; cursor: default; }
+.ud-q { font-size: 1.4rem; min-width: 2ch; text-align: center; }
+.table .btn.ud-doubt { background: #ff8f80; color: #2b1410; }
+.ud-shown { display: grid; gap: 4px; margin: 8px 0; }
+.ud-line { display: flex; gap: 8px; align-items: center; }
+.ud-who { min-width: 4.5em; overflow-wrap: anywhere; }
