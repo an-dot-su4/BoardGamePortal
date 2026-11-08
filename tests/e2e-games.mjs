@@ -517,6 +517,56 @@ const scenarios = {
     await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
     await pages[1].waitForSelector('text=第1ラウンド');
   },
+  async usodice() {
+    const { pages } = await openGame('うそつきダイス', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="3"])').selectOption('3');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let bids = 0, doubts = 0, shotBid = false, shotReveal = false;
+    for (let i = 0; i < 400; i++) {
+      if (await has(pages[0], 'text=もう一度遊ぶ')) break;
+      let acted = false;
+      for (const p of pages) {
+        const doubt = p.getByRole('button', { name: '🤥 ダウト！' });
+        const say = p.locator('.ud-panel button.primary');
+        if (await say.count() || await doubt.count()) {
+          if (!shotBid && (await doubt.count())) {
+            await p.locator('.ud-face:not([disabled])').last().click();
+            await shot(p, 'usodice-1-bid');
+            shotBid = true;
+          }
+          // 2回に1回はダウト、それ以外は宣言（上げられないときはダウト）
+          if ((await doubt.count()) && (bids % 2 === 1 || !(await say.count()))) {
+            await doubt.click();
+            doubts++;
+          } else {
+            await say.click();
+            bids++;
+          }
+          acted = true;
+          break;
+        }
+        const next = p.getByRole('button', { name: '次のラウンドへ（振り直す）' });
+        if (await next.count()) {
+          if (!shotReveal) {
+            await shot(p, 'usodice-2-reveal');
+            shotReveal = true;
+          }
+          await next.click();
+          acted = true;
+          break;
+        }
+      }
+      await pause(pages[0], acted ? 100 : 250);
+    }
+    await pages[1].waitForSelector('text=もう一度遊ぶ');
+    await shot(pages[1], 'usodice-3-end');
+    assert.ok(bids > 0 && doubts > 0, `宣言 ${bids}・ダウト ${doubts}`);
+    assert.match(await pages[0].locator('.log').innerText(), /さんの勝ち/);
+    await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
+    await pages[1].waitForSelector('text=第1ラウンド');
+  },
 };
 
 try {
