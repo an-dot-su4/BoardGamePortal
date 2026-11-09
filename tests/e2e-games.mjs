@@ -567,6 +567,34 @@ const scenarios = {
     await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
     await pages[1].waitForSelector('text=第1ラウンド');
   },
+  async mancala() {
+    const { pages } = await openGame('マンカラ', ['あき'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="weak"])').selectOption('weak');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    const [p] = pages;
+    let moves = 0;
+    for (let i = 0; i < 300; i++) {
+      if (await has(p, 'button:has-text("もう一局")')) break;
+      const pit = p.locator('button.mc-pit.can');
+      if (await pit.count()) {
+        if (moves === 3) await shot(p, 'mancala-1-play');
+        // いちばん種の多い穴をまく
+        const counts = await pit.evaluateAll(els => els.map(e => Number(e.querySelector('b').textContent)));
+        await pit.nth(counts.indexOf(Math.max(...counts))).click();
+        moves++;
+        await pause(p, 100);
+      } else await pause(p, 250);
+    }
+    await p.waitForSelector('button:has-text("もう一局")');
+    await shot(p, 'mancala-2-end');
+    const total = await p.locator('.mc-store b').evaluateAll(els => els.reduce((a, e) => a + Number(e.textContent), 0));
+    assert.equal(total, 48, 'ゴールの種の合計が合わない');
+    assert.ok(moves > 3, `手数 ${moves}`);
+    await p.getByRole('button', { name: /もう一局/ }).click();
+    await p.waitForSelector('text=第2局');
+  },
 };
 
 try {
