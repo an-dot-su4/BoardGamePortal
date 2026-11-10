@@ -801,3 +801,19 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
   .mc-seeds i { width: 5px; height: 5px; }
   .mc-pit b, .mc-store b { font-size: 1rem; }
 }
+
+/* ---- かこいとり ---- */
+.kk-wrap { display: flex; justify-content: center; }
+.kk-board { width: 100%; max-width: 520px; height: auto; background: #f7f1e3; border-radius: 12px; box-shadow: 0 3px 8px rgb(0 0 0 / 0.3); touch-action: manipulation; }
+.kk-dot { fill: #3a3125; }
+.kk-l .kk-vis { stroke: #3a3125; stroke-opacity: 0.15; stroke-width: 3; stroke-dasharray: 3 6; stroke-linecap: round; }
+.kk-l.drawn .kk-vis { stroke-opacity: 1; stroke-width: 6; stroke-dasharray: none; }
+.kk-l.last .kk-vis { stroke-width: 8; filter: drop-shadow(0 0 4px #3a3125); }
+.kk-l.can { cursor: pointer; }
+.kk-l.can .kk-vis { stroke-opacity: 0.3; }
+.kk-l.can:hover .kk-vis { stroke: #2b2620; stroke-opacity: 0.7; stroke-width: 6; stroke-dasharray: none; }
+.kk-hit { stroke: transparent; stroke-width: 24; stroke-linecap: butt; }
+.kk-mark { font-size: 22px; font-weight: 800; fill: #2b2620; }
+.kk-box.fresh rect { animation: kk-pop 0.4s ease-out; transform-box: fill-box; transform-origin: center; }
+@keyframes kk-pop { from { transform: scale(0.4); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .kk-box.fresh rect { animation: none; } }

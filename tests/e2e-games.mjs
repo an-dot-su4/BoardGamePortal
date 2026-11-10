@@ -595,6 +595,37 @@ const scenarios = {
     await p.getByRole('button', { name: /もう一局/ }).click();
     await p.waitForSelector('text=第2局');
   },
+  async kakoi() {
+    const { pages } = await openGame('かこいとり', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="6"])').selectOption('3');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let lines = 0;
+    for (let i = 0; i < 300; i++) {
+      if (await has(pages[0], 'button:has-text("もう一局")')) break;
+      let acted = false;
+      for (const p of pages) {
+        const can = p.locator('.kk-l.can');
+        if (await can.count()) {
+          if (lines === 6) await shot(p, 'kakoi-1-play');
+          await can.first().locator('.kk-hit').dispatchEvent('click');
+          lines++;
+          acted = true;
+          await pause(p, 80);
+          break;
+        }
+      }
+      if (!acted) await pause(pages[0], 200);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一局")');
+    await shot(pages[1], 'kakoi-2-end');
+    const boxes = await pages[0].locator('.kk-box').count();
+    assert.equal(boxes, 9, '箱が全部取られていない');
+    assert.ok(lines > 3, `引いた線 ${lines}`);
+    await pages[0].getByRole('button', { name: /もう一局/ }).click();
+    await pages[1].waitForSelector('text=第2局');
+  },
 };
 
 try {
