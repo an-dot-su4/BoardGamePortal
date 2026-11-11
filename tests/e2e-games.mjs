@@ -626,6 +626,51 @@ const scenarios = {
     await pages[0].getByRole('button', { name: /もう一局/ }).click();
     await pages[1].waitForSelector('text=第2局');
   },
+  async mekiki() {
+    const { pages } = await openGame('目利き市', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="16"])').selectOption('8');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let bids = 0, shotBid = false, shotReveal = false;
+    for (let i = 0; i < 200; i++) {
+      if (await has(pages[0], 'button:has-text("もう一度遊ぶ")')) break;
+      let acted = false;
+      for (const [k, p] of pages.entries()) {
+        const bid = p.locator('button:has-text("で入れ札する")');
+        if (await bid.count()) {
+          // あきは +5 を1回、はるは +1 を2回
+          if (k === 0) await p.getByRole('button', { name: '＋5' }).click();
+          else for (let j = 0; j < 2; j++) await p.getByRole('button', { name: '＋1' }).click();
+          if (!shotBid) {
+            await shot(p, 'mekiki-1-bid');
+            shotBid = true;
+          }
+          await bid.click();
+          bids++;
+          acted = true;
+          break;
+        }
+        const next = p.getByRole('button', { name: '次の競りへ' });
+        if (await next.count()) {
+          if (!shotReveal) {
+            await shot(p, 'mekiki-2-reveal');
+            shotReveal = true;
+          }
+          await next.click();
+          acted = true;
+          break;
+        }
+      }
+      await pause(pages[0], acted ? 100 : 250);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一度遊ぶ")');
+    await shot(pages[1], 'mekiki-3-end');
+    assert.ok(bids >= 16, `入れ札 ${bids}`);
+    assert.match(await pages[0].locator('.log').innerText(), /さんの勝ち/);
+    await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
+    await pages[1].waitForSelector('text=第1回 / 全8回');
+  },
 };
 
 try {
