@@ -817,3 +817,34 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .kk-box.fresh rect { animation: kk-pop 0.4s ease-out; transform-box: fill-box; transform-origin: center; }
 @keyframes kk-pop { from { transform: scale(0.4); } to { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .kk-box.fresh rect { animation: none; } }
+
+/* ---- 目利き市 ---- */
+.mk-item { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 6px; background: var(--card); color: var(--card-ink); font-size: 0.8rem; margin: 2px 2px 0 0; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); }
+.mk-item.k-tsubo { background: #f6dcc6; }
+.mk-item.k-jiku { background: #e3e0f7; }
+.mk-item.k-chawan { background: #d9efd9; }
+.mk-item.k-katana { background: #dde6ee; }
+.mk-item.big { flex-direction: column; width: 84px; height: 110px; justify-content: center; border-radius: 10px; font-size: 1rem; gap: 4px; }
+.mk-item.big .mk-icon { font-size: 2.2rem; }
+.mk-item.big b { font-size: 1.6rem; line-height: 1; }
+.mk-kname { font-size: 0.8rem; }
+.mk-now { display: flex; gap: 14px; align-items: center; margin-top: 8px; }
+.mk-items { margin-top: 4px; max-width: 220px; }
+.mk-amount { font-size: 1.5rem; min-width: 4ch; text-align: center; }
+.mk-bids { display: grid; gap: 2px; margin: 6px 0 10px; max-width: 320px; }
+.mk-bids > div { display: flex; justify-content: space-between; gap: 8px; padding: 2px 8px; border-radius: 6px; }
+.mk-bids > div.win { background: rgb(255 211 107 / 0.25); font-weight: 800; }
+.mk-scroll { overflow-x: auto; }
+.mk-table { border-collapse: collapse; margin-bottom: 10px; }
+.mk-table th, .mk-table td { padding: 3px 10px; border-bottom: 1px solid rgb(255 255 255 / 0.15); text-align: center; white-space: nowrap; }
+.mk-table td:first-child { text-align: left; }
+.mk-scroll { max-width: 100%; }
+@media (max-width: 480px) {
+  .mk-table { font-size: 0.85rem; }
+  .mk-table th, .mk-table td { padding: 3px 5px; }
+}
+.mk-panel .row { flex-wrap: nowrap; gap: 6px; }
+@media (max-width: 480px) {
+  .mk-panel .row .btn { padding: 6px 10px; min-width: 0; }
+  .mk-amount { font-size: 1.3rem; min-width: 3.2ch; }
+}
