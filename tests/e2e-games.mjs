@@ -671,6 +671,45 @@ const scenarios = {
     await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
     await pages[1].waitForSelector('text=第1回 / 全8回');
   },
+  async kazusaguri() {
+    const { pages } = await openGame('かずさぐり', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="strong"])').selectOption('strong');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    const [a, b] = pages;
+    // あきは数字を押して決める。はるはおまかせ
+    for (const d of ['3', '0', '7']) await a.locator('.ks-key', { hasText: new RegExp(`^${d}$`) }).click();
+    await shot(a, 'kazusaguri-1-secret');
+    await a.getByRole('button', { name: 'この数に決める' }).click();
+    await b.getByRole('button', { name: '🎲 おまかせ' }).click();
+    for (const p of pages) await p.waitForSelector('button:has-text("回の予想を出す")');
+    let guesses = 0;
+    for (let i = 0; i < 200; i++) {
+      if (await has(a, 'button:has-text("もう一局")')) break;
+      let acted = false;
+      for (const p of pages) {
+        const submit = p.locator('button:has-text("回の予想を出す")');
+        if (await submit.count()) {
+          if (guesses === 4) await p.locator('.ks-m', { hasText: /^5$/ }).click();
+          // 使える数字キーを順に押す（毎回ちがう組み合わせになるようずらす）
+          const keys = p.locator('.ks-key:not([disabled])');
+          for (let k = 0; k < 3; k++) await keys.nth((guesses + k * 2) % (await keys.count() - 1)).click();
+          if (guesses === 5) await shot(p, 'kazusaguri-2-guess');
+          await submit.click();
+          guesses++;
+          acted = true;
+        }
+      }
+      await pause(a, acted ? 100 : 250);
+    }
+    await b.waitForSelector('button:has-text("もう一局")');
+    await shot(b, 'kazusaguri-3-end');
+    assert.ok(guesses >= 2, `予想 ${guesses}`);
+    assert.match(await a.locator('.log').innerText(), /当てました/);
+    await a.getByRole('button', { name: 'もう一局' }).click();
+    await b.waitForSelector('button:has-text("この数に決める")');
+  },
 };
 
 try {

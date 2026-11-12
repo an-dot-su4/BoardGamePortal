@@ -848,3 +848,28 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
   .mk-panel .row .btn { padding: 6px 10px; min-width: 0; }
   .mk-amount { font-size: 1.3rem; min-width: 3.2ch; }
 }
+
+/* ---- かずさぐり ---- */
+.ks-code { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.15em; font-size: 1.05em; }
+.ks-pad { margin-top: 8px; }
+.ks-slots { display: flex; gap: 6px; margin-bottom: 8px; }
+.ks-slot { width: 40px; height: 48px; border-radius: 8px; background: rgb(255 255 255 / 0.15); border: 2px dashed rgb(255 255 255 / 0.4); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; }
+.ks-slot.on { background: var(--card); color: var(--card-ink); border-style: solid; border-color: #ffd36b; }
+.ks-keys { display: grid; grid-template-columns: repeat(6, minmax(0, 46px)); gap: 6px; }
+.table .btn.ks-key { padding: 8px 0; font-size: 1.1rem; font-weight: 800; min-width: 0; }
+.table .btn.ks-key.no { background: #c9c3bb; text-decoration: line-through; }
+.table .btn.ks-key.yes { background: #b8e6b0; }
+.ks-memo { margin-top: 8px; max-width: 340px; }
+.ks-memo-keys { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; margin-top: 2px; }
+.ks-m { height: 28px; border-radius: 6px; border: 1px solid rgb(255 255 255 / 0.4); background: transparent; color: inherit; font-weight: 800; cursor: pointer; padding: 0; }
+.ks-m.no { background: rgb(0 0 0 / 0.3); text-decoration: line-through; opacity: 0.6; }
+.ks-m.yes { background: #6fbf73; color: #10260f; }
+.ks-hist { border-collapse: collapse; margin-top: 6px; }
+.ks-hist td { padding: 2px 8px 2px 0; white-space: nowrap; }
+.ks-hist.mine td { font-size: 1.05rem; }
+.ks-hist tr.solved td { color: #ffd36b; font-weight: 800; }
+.ks-h { color: #ffb4a8; font-weight: 800; }
+.ks-b { color: #a8d8ff; font-weight: 800; }
+.ks-others { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.ks-others .result-box { margin: 0; }
+.ks-reveal { display: inline-block; margin-right: 12px; }
