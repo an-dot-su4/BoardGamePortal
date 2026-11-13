@@ -710,6 +710,45 @@ const scenarios = {
     await a.getByRole('button', { name: 'もう一局' }).click();
     await b.waitForSelector('button:has-text("この数に決める")');
   },
+  async yokubari() {
+    const { pages } = await openGame('よくばりダイス', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="150"])').selectOption('50');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let rolls = 0, holds = 0, shotRoll = false;
+    for (let i = 0; i < 400; i++) {
+      if (await has(pages[0], 'button:has-text("もう一局")')) break;
+      let acted = false;
+      for (const p of pages) {
+        const roll = p.getByRole('button', { name: '🎲 振る' });
+        if (!(await roll.count())) continue;
+        const hold = p.locator('button:has-text("💰 ためる")');
+        // 2回振ったらためる
+        const rolled = Number((await p.locator('.yk-potnum').innerText()).replace(/\D/g, '')) > 0;
+        if (rolled && (await p.locator('.yk-info').innerText()).includes('2回振った')) {
+          if (!shotRoll) {
+            await shot(p, 'yokubari-1-play');
+            shotRoll = true;
+          }
+          await hold.click();
+          holds++;
+        } else {
+          await roll.click();
+          rolls++;
+        }
+        acted = true;
+        break;
+      }
+      await pause(pages[0], acted ? 120 : 250);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一局")');
+    await shot(pages[1], 'yokubari-2-end');
+    assert.ok(rolls > 4, `振った ${rolls}`);
+    assert.match(await pages[0].locator('.log').innerText(), /さんの勝ち/);
+    await pages[0].getByRole('button', { name: /もう一局/ }).click();
+    await pages[1].waitForSelector('text=第2局');
+  },
 };
 
 try {
