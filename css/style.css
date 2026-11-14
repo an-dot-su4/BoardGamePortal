@@ -864,3 +864,26 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .yk-plus { color: #ffd36b; font-size: 0.8rem; margin-left: 2px; }
 .yk-last { background: rgb(255 211 107 / 0.2); border-radius: 8px; padding: 4px 8px; margin-top: 6px; }
 @media (prefers-reduced-motion: reduce) { .yk-die.rolling { animation: none; } }
+
+/* ---- 神経衰弱 ---- */
+.sk-grid { display: grid; gap: 6px; grid-template-columns: repeat(8, minmax(0, 1fr)); max-width: 640px; margin: 8px auto 0; }
+.sk-grid.n20 { grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 420px; }
+.sk-grid.n52 { grid-template-columns: repeat(13, minmax(0, 1fr)); max-width: 900px; }
+@media (max-width: 700px) { .sk-grid.n52 { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+.sk-card { width: 100%; box-sizing: border-box; align-self: start; aspect-ratio: 5 / 7; border-radius: 7px; display: flex; align-items: center; justify-content: center; padding: 0; font: inherit; min-width: 0; }
+.sk-card.down { background: repeating-linear-gradient(45deg, #2f5aa8 0 6px, #3b6cc4 6px 12px); border: 2px solid #f4f1ea; box-shadow: 0 2px 4px rgb(0 0 0 / 0.3); }
+.sk-card.down.can { cursor: pointer; }
+.sk-card.down.can:hover { transform: translateY(-3px); border-color: #ffd36b; }
+.sk-card.up { background: var(--card); color: var(--card-ink); border: 2px solid transparent; box-shadow: 0 2px 4px rgb(0 0 0 / 0.3); }
+.sk-card.up.flip { animation: sk-flip 0.25s ease-out; }
+.sk-card.up.red { color: var(--card-red); }
+.sk-card.up.open { border-color: #ffd36b; }
+.sk-card.up.shown { opacity: 0.85; border-color: #ffb4a8; }
+.sk-card.taken { border: 2px dashed; opacity: 0.55; background: rgb(0 0 0 / 0.15); }
+.sk-card.taken.fresh { opacity: 1; background: var(--card); color: var(--card-ink); border-style: solid; }
+.sk-face { display: flex; flex-direction: column; align-items: center; font-weight: 800; font-size: 1.05rem; line-height: 1.1; }
+.sk-face.red { color: var(--card-red); }
+.sk-face small { font-size: 0.85rem; }
+.sk-grid.n52 .sk-face { font-size: 0.9rem; }
+@keyframes sk-flip { from { transform: rotateY(90deg); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sk-card.up.flip { animation: none; } }

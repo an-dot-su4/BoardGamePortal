@@ -721,6 +721,36 @@ const scenarios = {
     await pages[0].getByRole('button', { name: /もう一局/ }).click();
     await pages[1].waitForSelector('text=第2局');
   },
+  async shinkei() {
+    const { pages } = await openGame('神経衰弱', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="52"])').selectOption('20');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let flips = 0;
+    for (let i = 0; i < 400; i++) {
+      if (await has(pages[0], 'button:has-text("もう一局")')) break;
+      let acted = false;
+      for (const p of pages) {
+        const down = p.locator('button.sk-card.can');
+        if (await down.count()) {
+          if (flips === 7) await shot(p, 'shinkei-1-play');
+          await down.nth(flips % (await down.count())).click();
+          flips++;
+          acted = true;
+          await pause(p, 80);
+          break;
+        }
+      }
+      if (!acted) await pause(pages[0], 250);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一局")');
+    await shot(pages[1], 'shinkei-2-end');
+    assert.ok(flips > 4, `めくった ${flips}`);
+    assert.equal(await pages[0].locator('.sk-card.taken').count(), 20);
+    await pages[0].getByRole('button', { name: /もう一局/ }).click();
+    await pages[1].waitForSelector('text=第2局');
+  },
 };
 
 try {
