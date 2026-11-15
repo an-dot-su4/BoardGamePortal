@@ -751,6 +751,39 @@ const scenarios = {
     await pages[0].getByRole('button', { name: /もう一局/ }).click();
     await pages[1].waitForSelector('text=第2局');
   },
+  async shichinarabe() {
+    const { pages } = await openGame('七並べ', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let plays = 0, passes = 0;
+    for (let i = 0; i < 400; i++) {
+      if (await has(pages[0], 'button:has-text("もう一局")')) break;
+      let acted = false;
+      for (const p of pages) {
+        const pass = p.locator('.game-actions button:has-text("パス")');
+        if (!(await pass.count())) continue;
+        const card = p.locator('.hand button.pcard:not([disabled])');
+        if (await card.count()) {
+          if (plays === 4) await shot(p, 'shichinarabe-1-play');
+          await card.first().click();
+          plays++;
+        } else {
+          await pass.click();
+          passes++;
+        }
+        acted = true;
+        break;
+      }
+      await pause(pages[0], acted ? 100 : 250);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一局")');
+    await shot(pages[1], 'shichinarabe-2-end');
+    assert.ok(plays > 5, `出した ${plays}`);
+    assert.match(await pages[0].locator('.log').innerText(), /1位/);
+    await pages[0].getByRole('button', { name: /もう一局/ }).click();
+    await pages[1].waitForSelector('text=第2局');
+  },
 };
 
 try {
