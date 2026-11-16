@@ -903,3 +903,19 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .pcard.sn-dim { opacity: 0.5; }
 .sn-pass { letter-spacing: 1px; }
 @media (max-width: 480px) { .sn-cell { font-size: 0.7rem; } .sn-board { padding: 6px 4px; } .sn-row { gap: 2px; } }
+
+/* ---- みんなでそろえて ---- */
+.sr-prompt { font-size: 1.5rem; font-weight: 800; text-align: center; margin: 10px 0 12px; padding: 12px; border-radius: 12px; background: rgb(255 255 255 / 0.12); }
+.sr-form { flex-wrap: nowrap; }
+.sr-input { flex: 1; min-width: 0; background: #fff; color: #222; font-size: 1.05rem; }
+.sr-groups { display: grid; gap: 6px; margin-top: 6px; }
+.sr-group { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: 0 8px; text-align: left; padding: 8px 12px; border-radius: 10px; border: 2px solid transparent; background: rgb(255 255 255 / 0.1); color: inherit; font: inherit; cursor: pointer; }
+.sr-group:disabled { cursor: default; }
+.sr-group .sr-label { font-weight: 800; font-size: 1.1rem; overflow-wrap: anywhere; }
+.sr-group .small { grid-column: 1; overflow-wrap: anywhere; }
+.sr-group .sr-pts { grid-column: 2; grid-row: 1 / 3; align-self: center; font-weight: 800; }
+.sr-group.hit { background: rgb(143 209 138 / 0.25); }
+.sr-group.picked { border-color: #ffd36b; }
+.sr-hit { font-weight: 800; color: #b8e6b0; }
+.sr-hist li { margin-bottom: 2px; }
+@media (max-width: 480px) { .sr-prompt { font-size: 1.2rem; } }
