@@ -784,6 +784,41 @@ const scenarios = {
     await pages[0].getByRole('button', { name: /もう一局/ }).click();
     await pages[1].waitForSelector('text=第2局');
   },
+  async soroete() {
+    const { pages } = await openGame('みんなでそろえて', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="12"])').selectOption('5');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    const [a, b] = pages;
+    for (let round = 1; round <= 5; round++) {
+      for (const p of pages) await p.waitForSelector('.sr-input');
+      // 入力中に画面が更新されても文字が消えないこと（はるが先に答えると、あきの画面が更新される）
+      await a.fill('.sr-input', 'りんご');
+      await b.fill('.sr-input', round === 1 ? '林檎' : 'リンゴ');
+      await b.getByRole('button', { name: '答える' }).click();
+      await a.waitForSelector('text=✅');
+      assert.equal(await a.inputValue('.sr-input'), 'りんご', '入力中の文字が消えた');
+      if (round === 1) await shot(a, 'soroete-1-answer');
+      await a.press('.sr-input', 'Enter');
+      for (const p of pages) await p.waitForSelector('.sr-groups');
+      if (round === 1) {
+        // 「林檎」と「りんご」をまとめる
+        await a.locator('.sr-group', { hasText: 'りんご' }).click();
+        await a.locator('.sr-group', { hasText: '林檎' }).click();
+        await b.waitForSelector('.sr-group:has-text("あき・はる")');
+        await shot(b, 'soroete-2-reveal');
+      }
+      await a.getByRole('button', { name: round === 5 ? '結果を見る' : '次のお題へ' }).click();
+    }
+    await b.waitForSelector('button:has-text("もう一度遊ぶ")');
+    await shot(b, 'soroete-3-end');
+    const score = await a.locator('.seat.me').innerText();
+    assert.match(score, /(\d+)点/);
+    assert.ok(Number(score.match(/(\d+)点/)[1]) >= 10, `あきの点 ${score}`);
+    await a.getByRole('button', { name: 'もう一度遊ぶ' }).click();
+    await b.waitForSelector('text=第1問 / 全5問');
+  },
 };
 
 try {
