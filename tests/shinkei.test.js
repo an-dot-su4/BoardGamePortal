@@ -15,7 +15,7 @@ function playOut(g, rng) {
 // r の位置を2つ返す
 const posOf = (g, pred) => g.cards.map((c, i) => [c, i]).filter(([c, i]) => g.owner[i] === null && pred(c)).map(([, i]) => i);
 
-test('そろえたら取ってもう一度・外れたら次の人で、2枚目をめくると裏に戻る', () => {
+test('そろえたら取ってもう一度・外れたら次の人で、次の人が1枚目をめくると裏に戻る', () => {
   const g = S.setup(makePlayers(2), seededRng(1), { size: 20 });
   const [a, b] = g.players;
   g.turn = a;
@@ -30,12 +30,46 @@ test('そろえたら取ってもう一度・外れたら次の人で、2枚目�
   S.act(g, a, { type: 'flip', index: x });
   S.act(g, a, { type: 'flip', index: y });
   assert.equal(g.turn, b);
-  assert.deepEqual(g.shown, [x, y]);
+  assert.deepEqual(g.shown, [x, y], '外れは次の人の番まで表のまま');
   const z = posOf(g, c => c.r === 5)[0];
   S.act(g, b, { type: 'flip', index: z });
-  assert.deepEqual(g.shown, [x, y], '1枚目では外れはまだ見えている');
-  S.act(g, b, { type: 'flip', index: x });
-  assert.deepEqual(g.shown, [z, x], '2枚目で前の外れは裏に戻り、今の外れが表になる');
+  assert.deepEqual(g.shown, [], '次の人が1枚目をめくったら裏に戻る');
+  const v = S.view(g, b);
+  assert.equal(v.cards[x], null);
+  assert.equal(v.cards[y], null);
+});
+
+test('表のままの外れは1枚目としてめくれるが、表のカードとそのままそろえることはできない', () => {
+  const g = S.setup(makePlayers(2), seededRng(5), { size: 20 });
+  const [a, b] = g.players;
+  g.turn = a;
+  g.turnIndex = 0;
+  const threes = posOf(g, c => c.r === 3);
+  const four = posOf(g, c => c.r === 4)[0];
+  S.act(g, a, { type: 'flip', index: threes[0] });
+  S.act(g, a, { type: 'flip', index: four });
+  assert.deepEqual(g.shown, [threes[0], four]);
+  // b は表のままの3をもう一度1枚目としてめくれる（裏に戻ってからめくり直したのと同じ）
+  S.act(g, b, { type: 'flip', index: threes[0] });
+  assert.deepEqual(g.open, [threes[0]]);
+  assert.deepEqual(g.shown, []);
+  S.act(g, b, { type: 'flip', index: threes[1] });
+  assert.equal(g.taken[b], 2);
+});
+
+test('CPU が2枚目に選ぶのは裏向きのカードだけ（表のままの外れは選ばない）', () => {
+  for (let s = 0; s < 200; s++) {
+    const rng = seededRng(900 + s);
+    const g = S.setup(makePlayers(2), rng, { size: 20, cpu: 'strong' });
+    while (g.phase === 'play') {
+      if (g.open.length === 1) {
+        const visible = new Set(g.shown);
+        const a = S.bot(g, g.turn, rng);
+        assert.ok(!visible.has(a.index), '表のカードを2枚目に選んだ');
+        S.act(g, g.turn, a, rng);
+      } else S.act(g, g.turn, S.bot(g, g.turn, rng), rng);
+    }
+  }
 });
 
 test('各人数・枚数・強さで最後まで遊べて、全部取られる', () => {

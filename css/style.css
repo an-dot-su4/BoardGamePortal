@@ -874,6 +874,8 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .sk-card.down { background: repeating-linear-gradient(45deg, #2f5aa8 0 6px, #3b6cc4 6px 12px); border: 2px solid #f4f1ea; box-shadow: 0 2px 4px rgb(0 0 0 / 0.3); }
 .sk-card.down.can { cursor: pointer; }
 .sk-card.down.can:hover { transform: translateY(-3px); border-color: #ffd36b; }
+.sk-card.up.can { cursor: pointer; }
+.sk-card.up.can:hover { transform: translateY(-3px); border-color: #ffd36b; }
 .sk-card.up { background: var(--card); color: var(--card-ink); border: 2px solid transparent; box-shadow: 0 2px 4px rgb(0 0 0 / 0.3); }
 .sk-card.up.flip { animation: sk-flip 0.25s ease-out; }
 .sk-card.up.red { color: var(--card-red); }
