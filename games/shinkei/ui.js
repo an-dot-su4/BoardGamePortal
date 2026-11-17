@@ -46,7 +46,12 @@ export function createUI(root, api) {
           );
         }
         if (c) {
-          return h('div', { class: ['sk-card up', !prevUp.has(i) && 'flip', open.has(i) && 'open', shown.has(i) && 'shown', (c.s === 'H' || c.s === 'D') && 'red'].filter(Boolean).join(' '), 'aria-label': cardLabel(c), dataset: { i } },
+          // 前の人の外れ（表のまま）は、まだ場にあるので1枚目としてめくれる
+          const pick = myTurn && shown.has(i);
+          return h(pick ? 'button' : 'div', {
+            class: ['sk-card up', !prevUp.has(i) && 'flip', open.has(i) && 'open', shown.has(i) && 'shown', pick && 'can', (c.s === 'H' || c.s === 'D') && 'red'].filter(Boolean).join(' '),
+            type: pick ? 'button' : null, onclick: pick ? () => api.send({ type: 'flip', index: i }) : null, 'aria-label': cardLabel(c), dataset: { i },
+          },
             h('span', { class: 'sk-face' }, RANK_LABEL[c.r], h('small', {}, SUIT_MARK[c.s])),
           );
         }
@@ -66,7 +71,7 @@ export function createUI(root, api) {
         : h('span', {}, `${nameOf(v.turn)} さんの番です`);
     }
     const lastMsg = v.last && v.phase === 'play'
-      ? h('span', { class: 'small muted' }, v.last.hit ? `🎉 ${nameOf(v.last.by)} さんがそろえた！` : `${nameOf(v.last.by)} さんは外れ（2枚目をめくると裏に戻ります）`)
+      ? h('span', { class: 'small muted' }, v.last.hit ? `🎉 ${nameOf(v.last.by)} さんがそろえた！` : `${nameOf(v.last.by)} さんは外れ（次に1枚目をめくると裏に戻ります）`)
       : null;
 
     const seats = h('div', { class: 'seats' },

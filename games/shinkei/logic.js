@@ -3,7 +3,7 @@
 // 採用ルール:
 //   - トランプを裏向きに並べる（標準は A〜8 の32枚。ロビーで A〜5 の20枚・52枚全部）
 //   - 手番では2枚めくる。同じ数字ならその2枚をもらって、もう一度めくれる
-//   - 違ったら2枚は表のまま次の人の手番になり、次の人が2枚目をめくるときに裏に戻る（全員が覚える時間）
+//   - 違ったら2枚は表のまま次の人の手番になり、次の人が1枚目をめくるときに裏に戻る（全員が覚える時間）
 //   - 全部なくなったら終わり。多く取った人の勝ち（同数なら同点で勝ち）
 import { GameError, shuffle } from '../../js/util.js';
 
@@ -91,12 +91,14 @@ export function act(g, pid, action, rng = Math.random) {
   if (g.owner[i] !== null) throw new GameError('そのカードはもう取られています');
   if (g.open.includes(i)) throw new GameError('そのカードはもうめくっています');
 
+  // 前の人の外れは、次の人が1枚目をめくるときに裏に戻す（それまでは表のまま見て覚えられる）。
+  // 表のままの外れのカードも、まだ取られていないので1枚目としてめくれる
+  g.shown = [];
   g.open.push(i);
   g.seen[i] = g.cards[i].r;
   g.seq++;
   if (g.open.length < 2) return;
 
-  g.shown = []; // 前の人の外れは、2枚目をめくったときに裏に戻す（それまでは見て覚えられる）
   const [a, b] = g.open;
   g.open = [];
   if (g.cards[a].r === g.cards[b].r) {
