@@ -921,3 +921,16 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .sr-hit { font-weight: 800; color: #b8e6b0; }
 .sr-hist li { margin-bottom: 2px; }
 @media (max-width: 480px) { .sr-prompt { font-size: 1.2rem; } }
+
+/* ---- ババ抜き ---- */
+.bb-backs { display: flex; flex-wrap: wrap; gap: 6px; }
+.bb-back {
+  width: 46px; height: 66px; border-radius: 7px; border: 2px solid #f4f1ea; cursor: pointer; padding: 0;
+  background: repeating-linear-gradient(45deg, #a83f3f 0 6px, #c45252 6px 12px); box-shadow: 0 2px 4px rgb(0 0 0 / 0.3); transition: transform 0.1s;
+}
+.bb-back:hover { transform: translateY(-6px); border-color: #ffd36b; }
+.seat.bb-target { border-color: rgb(255 180 168 / 0.7); }
+.bb-last { background: rgb(0 0 0 / 0.2); border-radius: 8px; padding: 4px 10px; margin-bottom: 8px; }
+.bb-mini { font-weight: 800; }
+.hand .pcard { cursor: default; }
+@media (max-width: 480px) { .bb-back { width: 38px; height: 54px; } }
