@@ -819,6 +819,36 @@ const scenarios = {
     await a.getByRole('button', { name: 'もう一度遊ぶ' }).click();
     await b.waitForSelector('text=第1問 / 全5問');
   },
+  async babanuki() {
+    const { pages } = await openGame('ババ抜き', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let draws = 0;
+    for (let i = 0; i < 400; i++) {
+      if (await has(pages[0], 'button:has-text("もう一局")')) break;
+      let acted = false;
+      for (const p of pages) {
+        const backs = p.locator('button.bb-back');
+        if (await backs.count()) {
+          if (draws === 2) await p.getByRole('button', { name: '🔀 混ぜる' }).click();
+          if (draws === 3) await shot(p, 'babanuki-1-play');
+          await backs.nth(draws % (await backs.count())).click();
+          draws++;
+          acted = true;
+          await pause(p, 100);
+          break;
+        }
+      }
+      if (!acted) await pause(pages[0], 250);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一局")');
+    await shot(pages[1], 'babanuki-2-end');
+    assert.ok(draws > 3, `引いた ${draws}`);
+    assert.match(await pages[0].locator('.log').innerText(), /ババ！/);
+    await pages[0].getByRole('button', { name: /もう一局/ }).click();
+    await pages[1].waitForSelector('text=第2局');
+  },
 };
 
 try {
