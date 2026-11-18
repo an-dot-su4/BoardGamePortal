@@ -934,3 +934,44 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .bb-mini { font-weight: 800; }
 .hand .pcard { cursor: default; }
 @media (max-width: 480px) { .bb-back { width: 38px; height: 54px; } }
+
+/* ---- ヨット ---- */
+.yt-stage { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.yt-dice { display: flex; gap: 8px; }
+.yt-die {
+  position: relative; width: 54px; height: 54px; border-radius: 11px; background: var(--card); color: var(--card-ink); box-sizing: border-box;
+  display: inline-grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 7px; border: 3px solid transparent; box-shadow: 0 3px 6px rgb(0 0 0 / 0.35); font: inherit;
+}
+button.yt-die { cursor: pointer; }
+.yt-die i { display: block; }
+.yt-die i.pip { background: #222; border-radius: 50%; margin: 2px; }
+.yt-die.blank { background: rgb(255 255 255 / 0.15); border: 2px dashed rgb(255 255 255 / 0.35); box-shadow: none; }
+.yt-die.held { border-color: #ffd36b; transform: translateY(-4px); }
+.yt-keep { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: #ffd36b; font-weight: 800; white-space: nowrap; }
+.yt-die.rolling { animation: yt-roll 0.4s ease-out; }
+@keyframes yt-roll { 0% { transform: rotate(-180deg) scale(0.6); } 100% { transform: none; } }
+.table .btn.yt-big { font-size: 1.05rem; padding: 10px 16px; }
+.yt-scroll { overflow-x: auto; margin-top: 10px; }
+.yt-sheet { border-collapse: collapse; min-width: 100%; font-size: 0.9rem; }
+.yt-sheet th, .yt-sheet td { padding: 3px 6px; border-bottom: 1px solid rgb(255 255 255 / 0.15); text-align: center; white-space: nowrap; }
+.yt-sheet thead th { position: sticky; top: 0; }
+.yt-sheet thead th.turn { color: #ffd36b; }
+.yt-sheet th.yt-cat { text-align: left; white-space: normal; }
+.yt-scroll { max-width: 100%; }
+.yt-sheet th.yt-cat small { display: block; font-weight: 400; opacity: 0.7; font-size: 0.7rem; }
+@media (max-width: 480px) { .yt-sheet th.yt-cat small { font-size: 0.62rem; } .yt-sheet th.yt-cat { min-width: 6.5em; } .yt-scroll { max-width: calc(100vw - 64px); } }
+.yt-sheet td.done { font-weight: 800; }
+.yt-sheet td.fresh { color: #ffd36b; }
+.yt-sheet tr.sub td, .yt-sheet tr.sub th { font-size: 0.8rem; opacity: 0.85; }
+.yt-sheet tr.total td, .yt-sheet tr.total th { font-weight: 800; font-size: 1rem; border-top: 2px solid rgb(255 255 255 / 0.4); }
+.yt-bonus { color: #8fd18a; }
+.yt-preview { font-style: italic; }
+.yt-pick { min-width: 40px; padding: 3px 6px; border-radius: 6px; border: 2px solid #ffd36b; background: rgb(255 211 107 / 0.2); color: inherit; font: inherit; font-weight: 800; cursor: pointer; }
+.yt-pick.zero { border-color: rgb(255 255 255 / 0.3); background: transparent; opacity: 0.7; }
+@media (max-width: 480px) {
+  .yt-die { width: 46px; height: 46px; padding: 5px; }
+  .yt-dice { gap: 6px; }
+  .yt-sheet { font-size: 0.8rem; }
+  .yt-sheet th, .yt-sheet td { padding: 3px 3px; }
+}
+@media (prefers-reduced-motion: reduce) { .yt-die.rolling { animation: none; } }

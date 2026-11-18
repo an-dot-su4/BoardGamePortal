@@ -849,6 +849,46 @@ const scenarios = {
     await pages[0].getByRole('button', { name: /もう一局/ }).click();
     await pages[1].waitForSelector('text=第2局');
   },
+  async yacht() {
+    const { pages } = await openGame('ヨット', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let turns = 0;
+    for (let i = 0; i < 600; i++) {
+      if (await has(pages[0], 'button:has-text("もう一局")')) break;
+      let acted = false;
+      for (const p of pages) {
+        const roll = p.locator('button:has-text("振る"), button:has-text("振り直す")').first();
+        if (!(await roll.count())) continue;
+        const picks = p.locator('button.yt-pick');
+        if (!(await picks.count())) {
+          await roll.click(); // 1回目
+        } else if ((await roll.innerText()).includes('あと2回')) {
+          // 1つキープして振り直す
+          await p.locator('button.yt-die').first().click();
+          await p.waitForSelector('.yt-die.held');
+          if (turns === 2) await shot(p, 'yacht-1-play');
+          await roll.click();
+        } else {
+          // いちばん点の高い役を選ぶ
+          const vals = await picks.evaluateAll(els => els.map(e => Number(e.textContent)));
+          await picks.nth(vals.indexOf(Math.max(...vals))).click();
+          turns++;
+        }
+        acted = true;
+        await pause(p, 120);
+        break;
+      }
+      if (!acted) await pause(pages[0], 250);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一局")', { timeout: 60000 });
+    await shot(pages[1], 'yacht-2-end');
+    assert.ok(turns >= 24, `役を埋めた回数 ${turns}`);
+    assert.match(await pages[0].locator('.log').innerText(), /さんの勝ち/);
+    await pages[0].getByRole('button', { name: /もう一局/ }).click();
+    await pages[1].waitForSelector('text=第2局');
+  },
 };
 
 try {
