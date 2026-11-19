@@ -975,3 +975,17 @@ button.yt-die { cursor: pointer; }
   .yt-sheet th, .yt-sheet td { padding: 3px 3px; }
 }
 @media (prefers-reduced-motion: reduce) { .yt-die.rolling { animation: none; } }
+
+/* ---- ページワン ---- */
+.po-field { display: flex; gap: 16px; align-items: center; }
+.po-pile { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pcard.po-big { width: 66px; height: 92px; font-size: 1.3rem; }
+.pcard.po-big .suit { font-size: 1.6rem; }
+.pcard.po-dim { opacity: 0.5; }
+.pcard.po-special { box-shadow: 0 2px 4px rgb(0 0 0 / 0.25), inset 0 0 0 2px #e8b84a; }
+.po-info { display: grid; gap: 4px; }
+.po-red { color: #ff9e9e; }
+.po-pen { color: #ffb4a8; font-weight: 800; }
+.po-one { color: #ffd36b; }
+.po-warn { color: #ffd36b; margin-top: 2px; }
+.table .btn.po-redbtn { color: #c62828; }
