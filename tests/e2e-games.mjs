@@ -939,6 +939,49 @@ const scenarios = {
     await pages[0].getByRole('button', { name: /もう一局/ }).click();
     await pages[1].waitForSelector('text=第2局');
   },
+  async bakudan() {
+    const { pages } = await openGame('みんなでばくだんさがし', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="easy"])').selectOption('easy');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    const [a, b] = pages;
+    // 最初の1マスを開けたあと、はるが手番外で旗を立てて外せる
+    await a.locator('button.bk-cell.closed').first().click();
+    await b.waitForSelector('.bk-cell.open');
+    await b.locator('button:has-text("旗モードにする")').click();
+    const target = b.locator('button.bk-cell.closed').last();
+    await target.click();
+    await a.waitForSelector('button.bk-cell.flag');
+    await shot(a, 'bakudan-0-flag');
+    await b.locator('button.bk-cell.flag').first().click();
+    await a.waitForSelector('button.bk-cell.flag', { state: 'detached' });
+    await b.locator('button:has-text("旗モード中")').click();
+    let opens = 1;
+    for (let i = 0; i < 300; i++) {
+      if (await has(a, 'button:has-text("もう一局")')) break;
+      let acted = false;
+      for (const p of pages) {
+        if (!(await has(p, 'text=あなたの番です'))) continue;
+        const cells = p.locator('button.bk-cell.closed:not(.flag)');
+        const n = await cells.count();
+        if (!n) break;
+        await cells.nth((opens * 7) % n).click();
+        opens++;
+        if (opens === 3) await shot(p, 'bakudan-1-play');
+        acted = true;
+        await pause(p, 120);
+        break;
+      }
+      if (!acted) await pause(a, 250);
+    }
+    await b.waitForSelector('button:has-text("もう一局")');
+    await shot(b, 'bakudan-2-end');
+    assert.ok(opens > 0, `開けた ${opens}`);
+    assert.match(await a.locator('.log').innerText(), /チームの(勝ち|負け)/);
+    await a.getByRole('button', { name: /もう一局/ }).click();
+    await b.waitForSelector('text=第2局');
+  },
 };
 
 try {
