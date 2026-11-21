@@ -1012,3 +1012,19 @@ button.yt-die { cursor: pointer; }
 .bk-cell.bomb { background: #d7ccc8; }
 .bk-cell.bomb.ok { background: #c5e1a5; }
 @media (max-width: 480px) { .bk-cell { font-size: 0.8rem; border-radius: 3px; } .bk-grid { gap: 1px; padding: 3px; } }
+
+/* ---- ブラックジャック ---- */
+.bj-dealer .hand { min-height: 80px; }
+.bj-total { font-weight: 800; font-size: 1.2rem; }
+.pcard.bj-back { background: repeating-linear-gradient(45deg, #2f5aa8 0 6px, #3b6cc4 6px 12px); border: 2px solid #f4f1ea; }
+.bj-seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-top: 8px; }
+.seat.bj-seat { min-width: 0; }
+.bj-hand { padding: 4px 0; gap: 3px; }
+.bj-res { font-weight: 800; margin-top: 2px; }
+.bj-res.win, .bj-res.blackjack { color: #b8e6b0; }
+.bj-res.lose, .bj-res.bust { color: #ffb4a8; }
+.bj-res.push { color: #e0e0e0; }
+.bj-betrow { gap: 6px; }
+.bj-amount { font-size: 1.3rem; min-width: 4ch; text-align: center; }
+.table .btn.bj-big { font-size: 1.05rem; padding: 10px 14px; }
+@media (max-width: 480px) { .bj-seats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

@@ -982,6 +982,57 @@ const scenarios = {
     await a.getByRole('button', { name: /もう一局/ }).click();
     await b.waitForSelector('text=第2局');
   },
+  async blackjack() {
+    const { pages } = await openGame('ブラックジャック', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="12"])').selectOption('5');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let bets = 0, moves = 0, shotPlay = false, shotResult = false;
+    for (let i = 0; i < 400; i++) {
+      if (await has(pages[0], 'button:has-text("もう一度遊ぶ")')) break;
+      let acted = false;
+      for (const [k, p] of pages.entries()) {
+        const bet = p.locator('button:has-text("枚賭ける")');
+        if (await bet.count()) {
+          if (k === 1) await p.getByRole('button', { name: '25', exact: true }).click();
+          await bet.click();
+          bets++;
+          acted = true;
+          break;
+        }
+        const hit = p.locator('button:has-text("ヒット")');
+        if (await hit.count()) {
+          if (!shotPlay) {
+            await shot(p, 'blackjack-1-play');
+            shotPlay = true;
+          }
+          const total = Number((await p.locator('.seat.me').innerText()).match(/合計 (\d+)/)?.[1] ?? 0);
+          await (total < 15 ? hit : p.locator('button:has-text("スタンド")')).click();
+          moves++;
+          acted = true;
+          break;
+        }
+        const next = p.getByRole('button', { name: '次の回へ' });
+        if (await next.count()) {
+          if (!shotResult) {
+            await shot(p, 'blackjack-2-result');
+            shotResult = true;
+          }
+          await next.click();
+          acted = true;
+          break;
+        }
+      }
+      await pause(pages[0], acted ? 120 : 250);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一度遊ぶ")');
+    await shot(pages[1], 'blackjack-3-end');
+    assert.ok(bets >= 8, `賭けた ${bets}`);
+    assert.match(await pages[0].locator('.log').innerText(), /さんの勝ち/);
+    await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
+    await pages[1].waitForSelector('text=第1回 / 全5回');
+  },
 };
 
 try {
