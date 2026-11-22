@@ -1028,3 +1028,25 @@ button.yt-die { cursor: pointer; }
 .bj-amount { font-size: 1.3rem; min-width: 4ch; text-align: center; }
 .table .btn.bj-big { font-size: 1.05rem; padding: 10px 14px; }
 @media (max-width: 480px) { .bj-seats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---- かずタッチ ---- */
+.kt-ready { text-align: center; }
+.kt-mode { font-size: 1.2rem; font-weight: 800; }
+.table .btn.kt-go { font-size: 1.2rem; padding: 12px 28px; }
+.kt-next { text-align: center; font-size: 1.2rem; margin: 6px 0; }
+.kt-next strong { font-size: 2rem; color: #ffd36b; }
+.kt-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; max-width: 420px; margin: 0 auto; touch-action: manipulation; user-select: none; }
+.kt-grid.shake { animation: kt-shake 0.3s; }
+@keyframes kt-shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.kt-cell { aspect-ratio: 1; border-radius: 10px; border: 0; background: var(--card); color: var(--card-ink); font-size: 1.5rem; font-weight: 800; cursor: pointer; box-shadow: 0 3px 0 rgb(0 0 0 / 0.25); font-family: inherit; padding: 0; }
+.kt-cell:active { transform: translateY(2px); box-shadow: 0 1px 0 rgb(0 0 0 / 0.25); }
+.kt-cell.done { background: rgb(255 255 255 / 0.15); color: rgb(255 255 255 / 0.35); box-shadow: none; cursor: default; }
+.kt-bars { display: grid; gap: 4px; margin-top: 12px; }
+.kt-row { display: grid; grid-template-columns: minmax(0, 6em) 1fr auto; gap: 8px; align-items: center; font-size: 0.9rem; }
+.kt-row.me .kt-name { color: #ffd36b; }
+.kt-name { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kt-bar { height: 10px; border-radius: 5px; background: rgb(0 0 0 / 0.3); overflow: hidden; }
+.kt-fill { display: block; height: 100%; background: #8fd18a; transition: width 0.15s; }
+.kt-score { white-space: nowrap; font-weight: 800; }
+@media (max-width: 480px) { .kt-cell { font-size: 1.25rem; border-radius: 8px; } .kt-grid { gap: 5px; } }
+@media (prefers-reduced-motion: reduce) { .kt-fill { transition: none; } }

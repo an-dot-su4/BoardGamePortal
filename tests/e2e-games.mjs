@@ -1033,6 +1033,45 @@ const scenarios = {
     await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
     await pages[1].waitForSelector('text=第1回 / 全5回');
   },
+  async kazutouch() {
+    const { pages } = await openGame('かずタッチ', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="5"])').first().selectOption('3');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    for (let round = 1; round <= 3; round++) {
+      for (const p of pages) await p.getByRole('button', { name: '👍 準備OK' }).click();
+      for (const p of pages) await p.waitForSelector('.kt-grid');
+      // 2人で交互に次の数字をタッチする（はるは1回おてつきする）
+      let missed = false;
+      for (let i = 0; i < 80; i++) {
+        let moved = false;
+        for (const [k, p] of pages.entries()) {
+          const next = p.locator('.kt-next strong');
+          if (!(await next.count())) continue;
+          const n = await next.innerText();
+          if (k === 1 && !missed) {
+            const wrong = p.locator('.kt-cell:not(.done)').filter({ hasNotText: new RegExp(`^${n}$`) }).first();
+            await wrong.dispatchEvent('pointerdown');
+            missed = true;
+          }
+          await p.locator('.kt-cell', { hasText: new RegExp(`^${n}$`) }).dispatchEvent('pointerdown');
+          await p.waitForFunction(old => document.querySelector('.kt-next strong')?.textContent !== old, n).catch(() => {});
+          if (round === 1 && i === 6 && k === 0) await shot(p, 'kazutouch-1-race');
+          moved = true;
+        }
+        if (!moved) break;
+      }
+      await pages[0].waitForSelector(round === 3 ? 'button:has-text("もう一度遊ぶ")' : 'button:has-text("次の回へ")', { timeout: 60000 });
+      if (round === 1) await shot(pages[1], 'kazutouch-2-result');
+      if (round < 3) await pages[0].getByRole('button', { name: '次の回へ' }).click();
+    }
+    await shot(pages[1], 'kazutouch-3-end');
+    assert.match(await pages[0].locator('.log').innerText(), /さんの勝ち/);
+    assert.match(await pages[1].locator('.log').innerText(), /おてつき/);
+    await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
+    await pages[1].waitForSelector('text=第1回 / 全3回');
+  },
 };
 
 try {
