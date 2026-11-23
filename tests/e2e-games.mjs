@@ -1072,6 +1072,28 @@ const scenarios = {
     await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
     await pages[1].waitForSelector('text=第1回 / 全3回');
   },
+  async quiz() {
+    const { pages } = await openGame('4択クイズ大会', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="15"])').selectOption('5');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    for (let q = 1; q <= 5; q++) {
+      for (const [k, p] of pages.entries()) {
+        await p.waitForSelector('.qz-choice:not([disabled])');
+        if (q === 1 && k === 0) await shot(p, 'quiz-1-question');
+        await p.locator('.qz-choice').nth((q + k) % 4).click();
+      }
+      await pages[1].waitForSelector('.qz-choice.right');
+      if (q === 1) await shot(pages[1], 'quiz-2-reveal');
+      if (q < 5) await pages[0].getByRole('button', { name: '次の問題へ' }).click();
+    }
+    await pages[1].waitForSelector('button:has-text("もう一度")');
+    await shot(pages[1], 'quiz-3-end');
+    assert.match(await pages[0].locator('.log').innerText(), /優勝/);
+    await pages[0].getByRole('button', { name: /もう一度/ }).click();
+    await pages[1].waitForSelector('text=第1問 / 全5問');
+  },
 };
 
 try {
