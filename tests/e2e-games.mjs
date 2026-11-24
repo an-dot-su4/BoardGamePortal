@@ -1152,6 +1152,46 @@ const scenarios = {
     await pages[0].getByRole('button', { name: /もう一度/ }).click();
     await pages[1].waitForSelector('text=第1問 / 全5問');
   },
+  async domino() {
+    const { pages } = await openGame('ドミノ', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="5"])').selectOption('1');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    let plays = 0, draws = 0, sides = 0;
+    for (let i = 0; i < 300; i++) {
+      if (await has(pages[0], 'button:has-text("もう一度遊ぶ")')) break;
+      let acted = false;
+      for (const p of pages) {
+        if (await has(p, 'button:has-text("左はし")')) {
+          if (!sides) await shot(p, 'domino-2-side');
+          await p.locator('button:has-text("左はし")').click();
+          sides++;
+          acted = true;
+          break;
+        }
+        const t = p.locator('.dm-hand button.dm-tile');
+        if (await t.count()) {
+          if (plays === 2) await shot(p, 'domino-1-play');
+          await t.first().click();
+          plays++;
+          acted = true;
+          break;
+        }
+        const draw = p.locator('button:has-text("山から1枚引く")');
+        if (await draw.count()) { await draw.click(); draws++; acted = true; break; }
+        const pass = p.getByRole('button', { name: 'パス' });
+        if (await pass.count()) { await pass.click(); acted = true; break; }
+      }
+      await pause(pages[0], acted ? 100 : 250);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一度遊ぶ")');
+    await shot(pages[1], 'domino-3-end');
+    assert.ok(plays > 2, `置いた ${plays}`);
+    assert.match(await pages[0].locator('.log').innerText(), /さんの勝ち/);
+    await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
+    await pages[1].waitForSelector('text=第1ラウンド');
+  },
 };
 
 try {

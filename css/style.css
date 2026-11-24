@@ -1074,3 +1074,24 @@ button.yt-die { cursor: pointer; }
 .qz-name { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qz-score { font-weight: 800; text-align: right; }
 @media (max-width: 480px) { .qz-q { font-size: 1.15rem; } .qz-choice { font-size: 0.95rem; padding: 10px 8px; } }
+
+/* ---- ドミノ ---- */
+.dm-line { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; min-height: 34px; }
+.dm-tile { display: inline-flex; align-items: stretch; background: #fbf8f0; border-radius: 5px; border: 1px solid rgb(0 0 0 / 0.35); box-shadow: 0 2px 3px rgb(0 0 0 / 0.3); padding: 2px; flex: none; font: inherit; }
+.dm-tile.h { flex-direction: row; width: 58px; height: 30px; }
+.dm-tile.v { flex-direction: column; width: 34px; height: 66px; }
+.dm-tile.mini { width: 40px; height: 21px; vertical-align: middle; margin: 1px; }
+.dm-half { flex: 1; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 2px; }
+.dm-half i { display: block; }
+.dm-half i.pip { background: #222; border-radius: 50%; margin: 1px; }
+.dm-tile.h .dm-bar { width: 1px; background: rgb(0 0 0 / 0.4); margin: 2px 1px; }
+.dm-tile.v .dm-bar { height: 1px; background: rgb(0 0 0 / 0.4); margin: 1px 2px; }
+.dm-tile.end-l, .dm-tile.end-r { box-shadow: 0 0 0 2px #8fd18a; }
+.dm-tile.last { box-shadow: 0 0 0 3px #ffd36b; }
+.dm-hand { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0; }
+button.dm-tile { cursor: pointer; }
+button.dm-tile:hover { transform: translateY(-4px); }
+.dm-tile.dim { opacity: 0.45; }
+.dm-tile.sel { box-shadow: 0 0 0 3px #ffd36b; transform: translateY(-4px); }
+.dm-left { margin: 2px 0; }
+@media (max-width: 480px) { .dm-tile.h { width: 46px; height: 24px; } .dm-tile.v { width: 30px; height: 58px; } }
