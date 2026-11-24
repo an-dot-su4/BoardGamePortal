@@ -25,8 +25,9 @@ export function renderOptions(root, options, { editable, onChange }) {
     h('div', { class: 'field' },
       h('label', {}, '盤'),
       h('select', { class: 'input', disabled: !editable, onchange: e => onChange({ ...options, board: e.target.value }) },
-        h('option', { value: 'ring', selected: options.board !== 'eight' }, '1周（標準・28マス・4つの町）'),
+        h('option', { value: 'ring', selected: !['eight', 'cross'].includes(options.board) }, '1周（標準・28マス・4つの町）'),
         h('option', { value: 'eight', selected: options.board === 'eight' }, '8の字（中央に銀行・分かれ道あり・8つの町。少し長め）'),
+        h('option', { value: 'cross', selected: options.board === 'cross' }, '田の字（十字路・中央に銀行・分かれ道が多い・12の町。少し長め）'),
       ),
     ),
     h('div', { class: 'field' },
@@ -140,13 +141,22 @@ export function createUI(root, api) {
         h('div', { class: 'ak-center' }, fukuBoard()),
       );
     }
-    // 8の字: 輪の内側にその輪の町と株価、福引き盤は盤の下
+    // 輪の内側に、その輪に面した町と株価（福引き盤は操作欄の下）
+    const areaRows = areas => areas.map(a => h('div', { class: 'ak-inner-row' }, h('span', { class: 'ak-area-dot', style: { background: AREA_INFO[a].color } }), ` ${AREA_INFO[a].name}`, h('b', {}, ` 株${view.prices[a]}G`),
+      me()?.stocks[a] ? h('span', { class: 'ak-inner-mine' }, ` 📈${me().stocks[a]}`) : null));
+    if (b.holes) {
+      return h('div', { class: 'ak-eight' },
+        h('div', { class: `ak-board ${b.id}`, style: grid },
+          b.squares.map((_, i) => square(i)),
+          b.holes.map(o => h('div', { class: 'ak-inner compact', style: { gridColumn: `${o.x + 1} / ${o.x + 1 + o.w}`, gridRow: `${o.y + 1} / ${o.y + 1 + o.h}` } }, areaRows(o.areas))),
+        ),
+      );
+    }
     const inner = (loop, row) => {
       const areas = b.areas.filter(a => b.squares.some((sq, i) => sq.area === a && b.loop[i] === loop));
       return h('div', { class: 'ak-inner', style: { gridColumn: '2 / 7', gridRow: `${row} / ${row + 3}` } },
         h('div', { class: 'ak-inner-title' }, loop === 'top' ? '上の輪' : '下の輪'),
-        areas.map(a => h('div', { class: 'ak-inner-row' }, h('span', { class: 'ak-area-dot', style: { background: AREA_INFO[a].color } }), ` ${AREA_INFO[a].name}`, h('b', {}, ` 株${view.prices[a]}G`),
-          me()?.stocks[a] ? h('span', { class: 'ak-inner-mine' }, ` 📈${me().stocks[a]}`) : null)),
+        areaRows(areas),
       );
     };
     return h('div', { class: 'ak-eight' },
@@ -167,6 +177,12 @@ export function createUI(root, api) {
     const here = view.players.find(p => p.id === view.turn.p)?.pos;
     const sq = b.squares[to];
     const what = sq.k === 'shop' ? sq.name : sq.k === 'chance' ? '福引き' : sq.k === 'season' ? MARK_INFO[sq.mark].name : '';
+    if (b.twoWay) {
+      // どの向きにも進める盤: 向きの矢印で示す
+      const d = { x: b.pos[to].x - b.pos[here].x, y: b.pos[to].y - b.pos[here].y };
+      const arrow = d.y < 0 ? '⬆ 上へ' : d.y > 0 ? '⬇ 下へ' : d.x > 0 ? '➡ 右へ' : '⬅ 左へ';
+      return `${arrow}（${what}）`;
+    }
     if (here === b.bank) return `${b.loop[to] === 'top' ? '⬆ 上の輪へ' : '⬇ 下の輪へ'}（${what}）`;
     return `🔁 ${b.loop[to] === 'top' ? '上' : '下'}の輪をもう1周（${what}）`;
   }
@@ -359,7 +375,7 @@ export function createUI(root, api) {
         h('div', { class: 'ak-main' },
           h('div', { class: 'ak-board-wrap' }, board()),
           // 8の字の盤では、福引き盤は操作欄のすぐ下（スマホでも盤→操作→福引きの順に並ぶ）
-          h('div', { class: 'ak-side' }, actions(), B().id === 'eight' ? h('div', { class: 'ak-eight-fuku' }, fukuBoard()) : null, seats(), stockTable()),
+          h('div', { class: 'ak-side' }, actions(), B().id !== 'ring' ? h('div', { class: 'ak-eight-fuku' }, fukuBoard()) : null, seats(), stockTable()),
         ),
         h('details', { open: showRules, ontoggle: e => { showRules = e.target.open; } },
           h('summary', { class: 'small' }, 'ルール・福引きの札'),

@@ -462,3 +462,110 @@ test('8の字のバランス: 先手が勝ちすぎず、だいたい30ラウン
     }
   }
 });
+
+// ---- 田の字の盤 ----
+
+const X = A.BOARDS.cross;
+const cross = (n = 2, opts = {}) => A.setup(makePlayers(n), rng(), { board: 'cross', ...opts });
+const at = (x, y) => X.pos.findIndex(p => p.x === x && p.y === y);
+
+test('田の字の盤: 45マス・12の町×3軒・四季は4つの角・道は双方向で全マスに行ける', () => {
+  assert.equal(X.squares.length, 45);
+  assert.equal(X.shopIds.length, 36);
+  assert.equal(X.areas.length, 12);
+  for (const a of X.areas) assert.equal(X.shopIds.filter(i => X.squares[i].area === a).length, 3, a);
+  assert.deepEqual([[0, 0], [8, 0], [8, 8], [0, 8]].map(([x, y]) => X.squares[at(x, y)].mark), ['spring', 'summer', 'autumn', 'winter']);
+  assert.equal(new Set(X.pos.map(p => `${p.x},${p.y}`)).size, 45);
+  X.next.forEach((ns, i) => ns.forEach(j => {
+    assert.equal(Math.abs(X.pos[i].x - X.pos[j].x) + Math.abs(X.pos[i].y - X.pos[j].y), 1);
+    assert.ok(X.next[j].includes(i), `${j}→${i} にも進める`);
+  }));
+  assert.equal(X.next[X.bank].length, 4);
+  for (const [x, y] of [[4, 0], [8, 4], [4, 8], [0, 4]]) assert.equal(X.next[at(x, y)].length, 3);
+  const reach = new Set([0]);
+  const queue = [0];
+  while (queue.length) for (const j of X.next[queue.shift()]) if (!reach.has(j)) reach.add(j), queue.push(j);
+  assert.equal(reach.size, 45);
+  // 区画の内側の表示に出す町は、盤にある町
+  for (const o of X.holes) for (const a of o.areas) assert.ok(X.areas.includes(a));
+});
+
+test('田の字: 銀行から4択、合流点で2択、銀行を通るときは3択。来たマスには戻れない', () => {
+  const g = cross(2);
+  const [a, b] = g.players;
+  A.act(g, a, { type: 'roll' }, die(5));
+  assert.equal(g.phase, 'route');
+  assert.equal(g.turn.options.length, 4);
+  throwsGame(() => A.act(g, b, { type: 'route', to: g.turn.options[0] }), /手番/);
+  // 上へ: 4マスで外周の合流点（4,0）、残り1マスで分かれ道
+  A.act(g, a, { type: 'route', to: at(4, 3) });
+  assert.equal(g.pos[a], at(4, 0));
+  assert.equal(g.phase, 'route');
+  assert.deepEqual(g.turn.options.slice().sort((x, y) => x - y), [at(3, 0), at(5, 0)].sort((x, y) => x - y));
+  throwsGame(() => A.act(g, a, { type: 'route', to: at(4, 1) }), /進めません/);
+  A.act(g, a, { type: 'route', to: at(5, 0) });
+  assert.equal(g.pos[a], at(5, 0));
+  // 銀行を通る: 上の通りから下りてきて、銀行で3択（来た道以外）
+  const h2 = cross(2);
+  h2.pos[a] = at(4, 2);
+  h2.prev[a] = at(4, 1);
+  A.act(h2, a, { type: 'roll' }, die(3));
+  assert.equal(h2.pos[a], X.bank);
+  assert.equal(h2.phase, 'route');
+  assert.equal(h2.turn.options.length, 3);
+  assert.ok(!h2.turn.options.includes(at(4, 3)));
+  assert.equal(h2.turn.stock, true, '銀行を通ったので株を買える');
+  A.act(h2, a, { type: 'route', to: at(5, 4) });
+  assert.equal(h2.pos[a], at(5, 4));
+});
+
+test('田の字: CPU だけで 2〜4人が最後まで遊べる・ランダムな操作でも壊れない', () => {
+  for (const n of [2, 3, 4]) {
+    for (let s = 1; s <= 15; s++) {
+      const r = seededRng(s * 17 + n);
+      const g = A.setup(makePlayers(n), r, { board: 'cross' });
+      let k = 0;
+      while (g.phase !== 'over' && k++ < 30000) A.act(g, g.turn.p, A.bot(g, g.turn.p, r), r);
+      assert.equal(g.phase, 'over', `${n}人 seed ${s}`);
+    }
+  }
+  const r = seededRng(99);
+  const g = A.setup(makePlayers(3), r, { board: 'cross' });
+  const pick = arr => arr[Math.floor(r() * arr.length)];
+  let k = 0;
+  while (g.phase !== 'over' && k++ < 40000) {
+    const p = g.turn.p;
+    const junk = pick([{ type: 'route', to: Math.floor(r() * 50) - 2 }, { type: 'route', to: null }, { type: 'buy' }, { type: 'end' }, { type: 'roll' },
+      { type: 'buyStock', area: pick(X.areas), n: 3 }, { type: 'sellStock', area: 'L', n: 1 }, { type: 'pick', cell: Math.floor(r() * 36) }]);
+    const copy = structuredClone(g);
+    try {
+      A.act(copy, p, junk, r);
+      Object.assign(g, copy);
+    } catch (e) {
+      assert.ok(e instanceof GameError, String(e));
+      A.act(g, p, A.bot(g, p, r), r);
+    }
+  }
+  assert.equal(g.phase, 'over');
+});
+
+test('田の字のバランス: 先手が勝ちすぎず、だいたい30ラウンド以内に決着する', () => {
+  for (const n of [2, 4]) {
+    const wins = {};
+    let rounds = 0;
+    const games = 300;
+    for (let s = 0; s < games; s++) {
+      const r = seededRng(s * 7919 + 31);
+      const g = A.setup(makePlayers(n), r, { board: 'cross' });
+      while (g.phase !== 'over') A.act(g, g.turn.p, A.bot(g, g.turn.p, r), r);
+      wins[g.winner] = (wins[g.winner] ?? 0) + 1;
+      rounds += g.round;
+    }
+    const avg = rounds / games;
+    assert.ok(avg > 10 && avg < 28, `${n}人の平均ラウンド ${avg}`);
+    for (const p of makePlayers(n).map(x => x.id)) {
+      const rate = (wins[p] ?? 0) / games;
+      assert.ok(rate > 0.7 / n && rate < 1.45 / n, `${n}人で ${p} の勝率 ${rate}`);
+    }
+  }
+});

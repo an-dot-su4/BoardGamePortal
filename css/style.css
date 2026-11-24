@@ -633,6 +633,9 @@ html.tk-m-open, html.tk-m-open body { overflow: hidden; overscroll-behavior: non
 .ak-route-btn { flex: 1 1 200px; }
 .ak-eight { display: grid; gap: 8px; }
 .ak-board.eight { max-width: 420px; margin: 0 auto; width: 100%; }
+.ak-board.cross { max-width: 520px; margin: 0 auto; width: 100%; }
+.ak-inner.compact { padding: 2px 4px; gap: 0; font-size: clamp(0.5rem, 1.9vw, 0.72rem); line-height: 1.25; }
+.ak-board.cross .ak-sq { font-size: clamp(0.45rem, 1.7vw, 0.68rem); }
 .ak-inner { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 4px 8px; background: rgb(0 0 0 / 0.18); border-radius: 10px; margin: 3px; font-size: clamp(0.62rem, 2.6vw, 0.8rem); min-width: 0; }
 .ak-inner-title { font-weight: 800; opacity: 0.85; }
 .ak-inner-row { white-space: nowrap; overflow: hidden; }

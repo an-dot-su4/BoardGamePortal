@@ -23,9 +23,13 @@ export const AREA_INFO = {
   F: { name: '八百屋通り', color: '#ffb26b' },
   G: { name: '木場', color: '#bcaaa4' },
   H: { name: '蔵前', color: '#4dd0e1' },
+  I: { name: '灯籠通り', color: '#ff8fb1' },
+  J: { name: '門前町', color: '#9ccc65' },
+  K: { name: '宿場', color: '#a1887f' },
+  L: { name: '港町', color: '#64b5f6' },
 };
 
-// 店の名前と基本価格（1周の盤は5軒ずつ、8の字の盤は先頭の4軒ずつ使う）
+// 店の名前と基本価格（1周の盤は5軒ずつ、8の字の盤は先頭の4軒ずつ、田の字の盤は先頭の3軒ずつ使う）
 const SHOPS = {
   A: [['だんご屋', 80], ['駄菓子屋', 100], ['甘味処', 120], ['焼き芋屋', 100], ['飴細工', 90]],
   B: [['干物屋', 120], ['寿司屋', 150], ['鰻屋', 170], ['天ぷら屋', 150], ['佃煮屋', 130]],
@@ -35,6 +39,10 @@ const SHOPS = {
   F: [['八百屋', 140], ['豆腐屋', 150], ['漬物屋', 170], ['乾物屋', 160]],
   G: [['材木問屋', 190], ['桶屋', 200], ['船大工', 230], ['炭問屋', 210]],
   H: [['札差', 260], ['酒蔵', 280], ['蔵元', 300], ['油問屋', 250]],
+  I: [['提灯屋', 150], ['蝋燭屋', 160], ['線香屋', 140]],
+  J: [['土産物屋', 170], ['茶店', 160], ['数珠屋', 180]],
+  K: [['旅籠', 200], ['馬宿', 180], ['飛脚屋', 190]],
+  L: [['網元', 220], ['船宿', 210], ['魚問屋', 230]],
 };
 export const RATES = [0, 0.25, 0.4, 0.6, 0.8, 1.0]; // 同じ町の自分の店の数 → 買物料の率
 const shopSq = (area, k) => ({ k: 'shop', area, name: SHOPS[area][k][0], base: SHOPS[area][k][1] });
@@ -104,9 +112,61 @@ function makeEight() {
   };
 }
 
-export const BOARDS = { ring: makeRing(), eight: makeEight() };
+// 田の字の盤: 9列×9行。外周32マス＋中央の十字（銀行から上下左右へ3マスずつ）＋中央の銀行（計45マス）
+//   どの向きにも進める（ただし来たマスには戻れない）。外周の合流点で2択、銀行で3択
+function makeCross() {
+  const squares = [];
+  const pos = [];
+  const at = {};
+  const put = (x, y, sq) => {
+    at[`${x},${y}`] = squares.length;
+    squares.push(sq);
+    pos.push({ x, y });
+  };
+  put(4, 4, { k: 'bank' });
+  // 外周: 角は四季、辺のまんなか（合流点）は福引き、角の両側に3軒ずつの町
+  const corners = { '0,0': 'spring', '8,0': 'summer', '8,8': 'autumn', '0,8': 'winter' };
+  // 角の両側の町（左上の角: 上の辺の左＝A、左の辺の上＝B …）
+  const sideArea = (x, y) => {
+    if (y === 0) return x < 4 ? 'A' : 'C';
+    if (x === 8) return y < 4 ? 'D' : 'E';
+    if (y === 8) return x > 4 ? 'F' : 'H';
+    return y > 4 ? 'G' : 'B';
+  };
+  const used = {};
+  const nextShop = area => shopSq(area, (used[area] = (used[area] ?? -1) + 1));
+  const ring = [];
+  for (let x = 0; x <= 8; x++) ring.push([x, 0]);
+  for (let y = 1; y <= 8; y++) ring.push([8, y]);
+  for (let x = 7; x >= 0; x--) ring.push([x, 8]);
+  for (let y = 7; y >= 1; y--) ring.push([0, y]);
+  for (const [x, y] of ring) {
+    const key = `${x},${y}`;
+    if (corners[key]) put(x, y, { k: 'season', mark: corners[key] });
+    else if (x === 4 || y === 4) put(x, y, { k: 'chance' });
+    else put(x, y, nextShop(sideArea(x, y)));
+  }
+  // 十字の通り（銀行に近い順）: 上＝I・右＝J・下＝K・左＝L
+  const arms = [['I', 0, -1], ['J', 1, 0], ['K', 0, 1], ['L', -1, 0]];
+  for (const [area, dx, dy] of arms) for (let k = 1; k <= 3; k++) put(4 + dx * k, 4 + dy * k, nextShop(area));
+  const next = pos.map(({ x, y }) => [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dy]) => at[`${x + dx},${y + dy}`]).filter(i => i !== undefined));
+  // 内側の4つの区画（3×3）と、そこに面した町
+  const holes = [
+    { x: 1, y: 1, areas: ['A', 'B', 'I', 'L'] },
+    { x: 5, y: 1, areas: ['C', 'D', 'I', 'J'] },
+    { x: 5, y: 5, areas: ['E', 'F', 'J', 'K'] },
+    { x: 1, y: 5, areas: ['H', 'G', 'K', 'L'] },
+  ].map(hh => ({ ...hh, w: 3, h: 3 }));
+  return {
+    id: 'cross', name: '田の字', cols: 9, rows: 9, bank: 0, areas: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'],
+    seatBonus: 50, salary: [600, 200], rates: [0, 0.4, 0.7, 1.1], // 1つの町は3軒
+    squares, next, pos, holes, twoWay: true,
+  };
+}
+
+export const BOARDS = { ring: makeRing(), eight: makeEight(), cross: makeCross() };
 for (const B of Object.values(BOARDS)) B.shopIds = B.squares.map((s, i) => (s.k === 'shop' ? i : -1)).filter(i => i >= 0);
-export const BOARD_IDS = ['ring', 'eight'];
+export const BOARD_IDS = ['ring', 'eight', 'cross'];
 export const boardOf = g => BOARDS[g.board ?? 'ring'];
 
 // 1周の盤（以前からの名前）
@@ -738,7 +798,7 @@ export function bot(g, p, rng = Math.random) {
   if (g.phase === 'over' || g.turn.p !== p) return null;
   const t = g.turn;
   if (g.phase === 'roll') return { type: 'roll' };
-  if (g.phase === 'route') return { type: 'route', to: botRoute(g, p, rng) };
+  if (g.phase === 'route') return { type: 'route', to: boardOf(g).twoWay ? botRouteSearch(g, p, rng) : botRoute(g, p, rng) };
   if (g.phase === 'pick') {
     // 列がそろいやすいマス（めくれた札が多い列にあるマス）を選ぶ
     const f = g.fuku;
@@ -816,6 +876,47 @@ function botRoute(g, p, rng) {
     const L = o === B.bank ? (here === 'top' ? 'bottom' : 'top') : B.loop[o];
     let s = loopScore(L) + rng() * 1.5;
     if (all && o === B.bank) s += 20;
+    if (!best || s > best.s) best = { o, s };
+  }
+  return best.o;
+}
+
+// どの向きにも進める盤の道選び: それぞれの向きへ数マス先までたどって、良いものの多い向きへ
+function botRouteSearch(g, p, rng) {
+  const B = boardOf(g);
+  const all = MARKS.every(m => g.marks[p].includes(m));
+  const score = (i, d) => {
+    const sq = B.squares[i];
+    const near = 1 / (1 + d * 0.35);
+    if (sq.k === 'bank') return all ? 25 * near : 0.5 * near;
+    if (sq.k === 'season') return g.marks[p].includes(sq.mark) ? 0 : 5 * near;
+    if (sq.k === 'shop') {
+      const o = g.shops[i].owner;
+      if (!o) return 0.5 * near;
+      if (o === p) return 0.2 * near;
+      return -(feeOf(g, i) / 250) * near;
+    }
+    return 0.2 * near;
+  };
+  let best = null;
+  for (const o of g.turn.options) {
+    // その向きへ進んだときに通りうるマス（分かれ道ではすべての先をたどる）を深さ7まで
+    let s = score(o, 0);
+    let frontier = [[o, g.pos[p]]];
+    const seen = new Set([o]);
+    for (let d = 1; d <= 7; d++) {
+      const nextF = [];
+      for (const [i, prev] of frontier) {
+        for (const j of stepOptions(B, i, prev)) {
+          if (seen.has(j)) continue;
+          seen.add(j);
+          s += score(j, d);
+          nextF.push([j, i]);
+        }
+      }
+      frontier = nextF;
+    }
+    s += rng() * 1.5;
     if (!best || s > best.s) best = { o, s };
   }
   return best.o;
