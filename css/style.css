@@ -1095,3 +1095,23 @@ button.dm-tile:hover { transform: translateY(-4px); }
 .dm-tile.sel { box-shadow: 0 0 0 3px #ffd36b; transform: translateY(-4px); }
 .dm-left { margin: 2px 0; }
 @media (max-width: 480px) { .dm-tile.h { width: 46px; height: 24px; } .dm-tile.v { width: 30px; height: 58px; } }
+
+/* セブンブリッジ */
+.sb-piles { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+.sb-pile { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pcard.sb-back { background: repeating-linear-gradient(45deg, #3b5fa8, #3b5fa8 6px, #4a6fbb 6px, #4a6fbb 12px); color: #fff; font-size: 1.6rem; cursor: default; }
+.pcard.sb-empty { opacity: 0.4; cursor: default; }
+.sb-draw { flex: 1 1 auto; }
+.sb-melds { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.sb-meld { display: flex; flex-direction: column; gap: 3px; padding: 6px; border-radius: 8px; background: rgb(0 0 0 / 0.15); border: 2px solid transparent; }
+.sb-meld.fits { border-color: #ffd36b; }
+.sb-meld.last { background: rgb(255 211 107 / 0.15); }
+.sb-cards { display: flex; flex-wrap: wrap; gap: 3px; }
+.sb-cards .pcard.mini, .sb-left .pcard.mini { width: 32px; height: 46px; font-size: 0.8rem; cursor: default; }
+.sb-cards .pcard.mini .suit, .sb-left .pcard.mini .suit { font-size: 0.9rem; }
+.pcard.sb-new { outline: 2px solid #ffd36b; }
+.pcard.sb-taken { border: 2px dashed #3b5fa8; }
+.sb-add { padding: 4px 8px; font-size: 0.85rem; }
+.sb-owner { text-align: center; }
+.sb-sort { padding: 4px 10px; font-size: 0.85rem; }
+.sb-left { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin: 3px 0; }

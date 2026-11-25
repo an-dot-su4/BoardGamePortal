@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { GAMES } from '../games/registry.js';
+import * as SB from '../games/sevenbridge/logic.js';
 
 const PORT = 8138;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -1191,6 +1192,67 @@ const scenarios = {
     assert.match(await pages[0].locator('.log').innerText(), /さんの勝ち/);
     await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
     await pages[1].waitForSelector('text=第1ラウンド');
+  },
+  async sevenbridge() {
+    const { pages } = await openGame('セブンブリッジ', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.locator('select:has(option[value="5"])').selectOption('1');
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    const card = id => ({ id, s: id[0], r: Number(id.slice(1)) });
+    const ids = loc => loc.evaluateAll(els => els.map(e => e.dataset.card));
+    let melds = 0, layoffs = 0, discards = 0, took = 0;
+    for (let i = 0; i < 400; i++) {
+      if (await has(pages[0], 'button:has-text("もう一度遊ぶ")')) break;
+      let acted = false;
+      for (const p of pages) {
+        const stock = p.locator('button:has-text("山札から引く")');
+        if (await stock.count()) {
+          const takeBtn = p.locator('.sb-draw button:has-text("を取る")');
+          if (!took && (await takeBtn.count())) { await takeBtn.click(); took++; } else await stock.click();
+          acted = true;
+          break;
+        }
+        const discardBtn = p.locator('button:has-text("捨てて終わる"), button:has-text("1枚選んで捨てる")');
+        if (!(await discardBtn.count())) continue;
+        const hand = (await ids(p.locator('.hand .pcard'))).map(card);
+        const meld = SB.findMeld(hand);
+        if (meld) {
+          for (const c of meld) await p.locator(`.hand .pcard[data-card="${c.id}"]`).click();
+          if (melds === 0) await shot(p, 'sevenbridge-1-meld');
+          await p.locator('button:has-text("組を出す（")').click();
+          melds++;
+          acted = true;
+          break;
+        }
+        const table = [];
+        for (const m of await p.locator('.sb-meld').all()) table.push((await ids(m.locator('.pcard'))).map(card));
+        const lay = hand.find(c => table.some(m => SB.meldOf([...m, c])));
+        if (lay) {
+          await p.locator(`.hand .pcard[data-card="${lay.id}"]`).click();
+          if (layoffs === 0) await shot(p, 'sevenbridge-2-layoff');
+          await p.locator('.sb-add').first().click();
+          layoffs++;
+          acted = true;
+          break;
+        }
+        const taken = await ids(p.locator('.hand .pcard.sb-taken'));
+        const pick = hand.filter(c => !taken.includes(c.id) || hand.length === 1).sort((a, b) => SB.cardPoints(b) - SB.cardPoints(a))[0];
+        await p.locator(`.hand .pcard[data-card="${pick.id}"]`).click();
+        await p.locator('button:has-text("捨てて終わる")').click();
+        discards++;
+        acted = true;
+        break;
+      }
+      await pause(pages[0], acted ? 100 : 250);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一度遊ぶ")');
+    await shot(pages[1], 'sevenbridge-3-end');
+    assert.ok(discards > 2, `捨てた ${discards}`);
+    assert.match(await pages[0].locator('.log').innerText(), /さんの勝ち|引き分け/);
+    await pages[0].getByRole('button', { name: 'もう一度遊ぶ' }).click();
+    await pages[1].waitForSelector('text=第1ラウンド');
+    console.log(`  sevenbridge: 組 ${melds}・つけ札 ${layoffs}・捨て ${discards}`);
   },
 };
 
