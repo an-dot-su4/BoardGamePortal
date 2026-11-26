@@ -1254,6 +1254,43 @@ const scenarios = {
     await pages[1].waitForSelector('text=第1ラウンド');
     console.log(`  sevenbridge: 組 ${melds}・つけ札 ${layoffs}・捨て ${discards}`);
   },
+  async bingo() {
+    const { pages } = await openGame('ならべてビンゴ', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    // あきは2マスを入れ替える。はるは「ばらばらにする」
+    const first = await pages[0].locator('.bg-cell').nth(0).innerText();
+    await pages[0].locator('.bg-cell').nth(0).click();
+    await pages[0].locator('.bg-cell').nth(24).click();
+    await pages[0].waitForFunction(n => document.querySelectorAll('.bg-cell')[24]?.textContent === n, first);
+    await shot(pages[0], 'bingo-1-arrange');
+    await pages[1].getByRole('button', { name: '🔀 ばらばらにする' }).click();
+    for (const p of pages) await p.getByRole('button', { name: '✅ 準備OK' }).click();
+    await pages[1].waitForSelector('text=呼ばれた数');
+    let calls = 0;
+    for (let i = 0; i < 200; i++) {
+      if (await has(pages[0], 'button:has-text("もう一局")')) break;
+      let acted = false;
+      for (const p of pages) {
+        const cell = p.locator('button.bg-cell.can');
+        if (await cell.count()) {
+          if (calls === 6) await shot(p, 'bingo-2-call');
+          await cell.first().click();
+          calls++;
+          acted = true;
+          break;
+        }
+      }
+      await pause(pages[0], acted ? 120 : 250);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一局")');
+    await shot(pages[1], 'bingo-3-end');
+    assert.ok(calls > 2, `呼んだ ${calls}`);
+    assert.match(await pages[0].locator('.log').innerText(), /ビンゴ！/);
+    await pages[0].getByRole('button', { name: 'もう一局' }).click();
+    await pages[1].waitForSelector('text=第2局');
+  },
 };
 
 try {
