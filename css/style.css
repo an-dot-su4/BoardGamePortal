@@ -1115,3 +1115,27 @@ button.dm-tile:hover { transform: translateY(-4px); }
 .sb-owner { text-align: center; }
 .sb-sort { padding: 4px 10px; font-size: 0.85rem; }
 .sb-left { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin: 3px 0; }
+
+/* ならべてビンゴ */
+.bg-board { margin: 8px 0; }
+.bg-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-width: 340px; margin: 8px 0; }
+.bg-cell {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px;
+  background: #fffaf0; color: #2b2b2b; font-weight: 800; font-size: 1.3rem; border: 2px solid rgb(0 0 0 / 0.15); padding: 0;
+}
+button.bg-cell { cursor: pointer; }
+button.bg-cell.can:hover { border-color: #ffd36b; transform: translateY(-2px); }
+.bg-cell.open { background: #f6a6a0; color: #6b1d16; }
+.bg-cell.lit { background: #ffd36b; color: #5a3d00; }
+.bg-cell.last { box-shadow: 0 0 0 3px #fff; }
+.bg-cell.sel { outline: 3px solid #ffd36b; transform: scale(1.06); }
+.bg-grid.mini { max-width: 150px; gap: 2px; margin: 4px 0; }
+.bg-grid.mini .bg-cell { font-size: 0.75rem; border-radius: 4px; border-width: 1px; }
+.bg-reach { color: #ffd36b; }
+.bg-called { display: grid; grid-template-columns: repeat(13, 1fr); gap: 3px; margin-top: 6px; max-width: 520px; }
+.bg-num { text-align: center; font-size: 0.8rem; padding: 3px 0; border-radius: 4px; background: rgb(0 0 0 / 0.15); color: rgb(255 255 255 / 0.5); }
+.bg-num.done { background: #f6a6a0; color: #6b1d16; font-weight: 800; }
+.bg-num.last { outline: 2px solid #fff; }
+.bg-all { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 10px; }
+.bg-other { min-width: 130px; }
+@media (max-width: 480px) { .bg-called { grid-template-columns: repeat(9, 1fr); } }
