@@ -1139,3 +1139,14 @@ button.bg-cell.can:hover { border-color: #ffd36b; transform: translateY(-2px); }
 .bg-all { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 10px; }
 .bg-other { min-width: 130px; }
 @media (max-width: 480px) { .bg-called { grid-template-columns: repeat(9, 1fr); } }
+
+/* とびこえチェッカー */
+.tb-wrap { display: flex; justify-content: center; margin: 8px 0; }
+.tb-board { width: 100%; max-width: 560px; height: auto; touch-action: manipulation; }
+.tb-cell.can { cursor: pointer; }
+.tb-cell.can:hover .tb-hole { fill-opacity: 0.6; }
+.tb-sel { filter: drop-shadow(0 0 4px #fff); }
+.tb-dest { animation: tb-pulse 1s ease-in-out infinite alternate; }
+@keyframes tb-pulse { from { fill-opacity: 0.45; } to { fill-opacity: 0.95; } }
+@media (prefers-reduced-motion: reduce) { .tb-dest { animation: none; } }
+.tb-dot { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 50%; margin-right: 4px; border: 1px solid rgb(0 0 0 / 0.4); vertical-align: -1px; }
