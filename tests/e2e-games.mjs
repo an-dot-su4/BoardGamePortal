@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { GAMES } from '../games/registry.js';
 import * as SB from '../games/sevenbridge/logic.js';
+import * as TB from '../games/tobikoe/logic.js';
 
 const PORT = 8138;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -1290,6 +1291,46 @@ const scenarios = {
     assert.match(await pages[0].locator('.log').innerText(), /ビンゴ！/);
     await pages[0].getByRole('button', { name: 'もう一局' }).click();
     await pages[1].waitForSelector('text=第2局');
+  },
+  async tobikoe() {
+    const { pages } = await openGame('とびこえチェッカー', ['あき', 'はる'], VIEWPORT, async host => {
+      await host.getByRole('button', { name: '🤖 CPUを追加' }).click();
+      await host.waitForSelector('#players li:has-text("CPU")');
+    });
+    // 盤の data-cell / data-owner から状態を組み立て、人の手も CPU と同じ考え方で最後まで指す
+    const readBoard = p => p.locator('svg.tb-board g.tb-cell').evaluateAll(els =>
+      Object.fromEntries(els.filter(e => e.dataset.owner).map(e => [e.dataset.cell, e.dataset.owner])));
+    const corner = {};
+    let moves = 0;
+    for (let i = 0; i < 1500; i++) {
+      if (await has(pages[0], 'button:has-text("もう一局")')) break;
+      let acted = false;
+      for (const p of pages) {
+        if (!(await has(p, 'svg.tb-board g.tb-cell.can'))) continue;
+        const board = await readBoard(p);
+        for (const [k, o] of Object.entries(board)) if (!(o in corner)) {
+          const c = TB.CORNERS.findIndex(cs => cs.includes(k));
+          if (c >= 0 && moves === 0) corner[o] = c;
+        }
+        const me = await p.locator('g.tb-cell.can').first().getAttribute('data-owner');
+        const players = Object.keys(corner);
+        const a = TB.bot({ phase: 'play', turn: me, board, players, corner }, me);
+        await p.locator(`g.tb-cell[data-cell="${a.from}"]`).click();
+        if (moves === 1) await shot(p, 'tobikoe-1-select');
+        await p.locator(`g.tb-cell[data-cell="${a.to}"]`).click();
+        moves++;
+        acted = true;
+        break;
+      }
+      await pause(pages[0], acted ? 60 : 150);
+    }
+    await pages[1].waitForSelector('button:has-text("もう一局")');
+    await shot(pages[1], 'tobikoe-2-end');
+    assert.ok(moves > 20, `動かした ${moves}`);
+    assert.match(await pages[0].locator('.log').innerText(), /さんの勝ち|運びきりました/);
+    await pages[0].getByRole('button', { name: 'もう一局' }).click();
+    await pages[1].waitForSelector('text=第2局');
+    console.log(`  tobikoe: 人の手 ${moves}`);
   },
 };
 
