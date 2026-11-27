@@ -1,0 +1,160 @@
+/* 麻雀修行（mahjong.html）だけの見た目。色は style.css の変数を使う */
+:root {
+  --mj-tile-bg: #fffdf5;
+  --mj-tile-edge: #c9bfa6;
+  --mj-tile-side: #e2b65a;
+  --mj-felt: #2f6b4f;
+  --mj-felt-ink: #eef7f0;
+  --mj-mark: #f2c230;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --mj-felt: #1f4a37; --mj-felt-ink: #e3f1e8; --mj-tile-edge: #8f866f; }
+}
+:root[data-theme="dark"] { --mj-felt: #1f4a37; --mj-felt-ink: #e3f1e8; --mj-tile-edge: #8f866f; }
+
+.mj-page { padding-bottom: 32px; }
+.mj-foot { margin-top: 28px; }
+.spacer { flex: 1; }
+
+/* タブ */
+.mj-tabs { display: flex; gap: 6px; margin: 16px 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.mj-tab {
+  border: 0; background: none; padding: 10px 14px; font-weight: 700; cursor: pointer; color: var(--muted);
+  border-bottom: 3px solid transparent; white-space: nowrap;
+}
+.mj-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+
+/* 牌 */
+.mj-tile {
+  --tw: 34px;
+  display: inline-block; width: var(--tw); aspect-ratio: 3 / 4; flex: none;
+  background: var(--mj-tile-bg); border: 1px solid var(--mj-tile-edge); border-radius: calc(var(--tw) * 0.12);
+  box-shadow: 0 calc(var(--tw) * 0.08) 0 var(--mj-tile-side);
+  padding: 1px; vertical-align: bottom; color: #1d1d1d; font: inherit;
+}
+.mj-tile svg { display: block; width: 100%; height: 100%; }
+.mj-tile.sm { --tw: 22px; }
+.mj-tile.md { --tw: 30px; }
+.mj-tile.lg { --tw: 40px; }
+.mj-tile.side { transform: rotate(-90deg); margin: 0 calc(var(--tw) * 0.17); }
+.mj-tile.mark { outline: 3px solid var(--mj-mark); outline-offset: 1px; }
+.mj-tile.dim { opacity: 0.35; }
+.mj-tile.back { background: var(--mj-tile-side); }
+.mj-tile.empty {
+  display: inline-grid; place-items: center; background: transparent; border-style: dashed; box-shadow: none;
+  color: var(--muted); font-size: 0.75rem;
+}
+button.mj-tile { cursor: pointer; transition: transform 0.08s; }
+button.mj-tile:hover { transform: translateY(-4px); }
+button.mj-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button.mj-tile.side:hover { transform: rotate(-90deg); }
+.mj-row { display: inline-flex; gap: 2px; flex-wrap: wrap; align-items: flex-end; }
+.mj-labeled { display: inline-grid; justify-items: center; gap: 4px; }
+.mj-label { font-size: 0.72rem; color: var(--muted); }
+.mj-show { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+@media (max-width: 480px) {
+  .mj-tile.lg { --tw: min(40px, calc((100vw - 64px) / 14.6)); }
+  .mj-tile.md { --tw: 26px; }
+  .mj-tile.sm { --tw: 19px; }
+}
+
+/* レッスン一覧 */
+.mj-lesson-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.mj-lesson-card {
+  width: 100%; text-align: left; display: flex; gap: 10px; align-items: flex-start; cursor: pointer; color: var(--text);
+}
+.mj-lesson-card:hover { border-color: var(--accent); }
+.mj-lesson-card.done { border-left: 4px solid var(--ok); }
+.mj-check { width: 1.2em; color: var(--ok); font-weight: 800; flex: none; }
+.mj-lesson-text { display: grid; gap: 2px; }
+
+/* レッスン */
+.mj-title { margin: 0; font-size: 1.3rem; }
+.mj-goal { margin: 2px 0 0; }
+.mj-toggle { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.mj-explain p { margin: 0 0 6px; }
+.mj-say { line-height: 1.7; }
+.mj-msg { padding: 8px 12px; border-radius: 10px; line-height: 1.6; }
+.mj-msg.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.mj-msg.ng { background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.mj-answer { color: var(--accent); font-weight: 700; }
+
+/* 卓（河） */
+.mj-table {
+  display: grid; gap: 8px; padding: 12px; border-radius: var(--radius);
+  background: var(--mj-felt); color: var(--mj-felt-ink);
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-areas: ". toimen ." "kami center shimo" ". me .";
+  align-items: center;
+}
+.mj-river { display: grid; gap: 4px; justify-items: center; }
+.mj-river.toimen { grid-area: toimen; }
+.mj-river.kami { grid-area: kami; }
+.mj-river.shimo { grid-area: shimo; }
+.mj-river.me { grid-area: me; }
+.mj-river-label { font-size: 0.75rem; opacity: 0.85; white-space: nowrap; }
+.mj-river-tiles {
+  display: flex; flex-wrap: wrap; gap: 2px; align-items: flex-end; justify-content: center;
+  max-width: calc(22px * 6 + 12px); min-height: 32px;
+}
+.mj-center {
+  grid-area: center; display: grid; gap: 4px; justify-items: center; text-align: center;
+  background: rgb(0 0 0 / 0.18); border-radius: 10px; padding: 8px 10px; min-width: 96px;
+}
+@media (max-width: 480px) {
+  .mj-table { padding: 10px 6px; gap: 6px; }
+  .mj-river-tiles { max-width: calc(19px * 6 + 12px); }
+  .mj-center { min-width: 0; padding: 6px; }
+}
+
+/* 自分の手 */
+.mj-hand { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; justify-content: space-between; }
+.mj-hand-tiles { display: flex; flex-wrap: wrap; gap: 2px; align-items: flex-end; row-gap: 8px; }
+.mj-drawn { margin-left: 8px; display: inline-flex; }
+.mj-melds { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.mj-meld { display: inline-flex; gap: 1px; align-items: flex-end; }
+.mj-meld-btn { border: 0; background: none; padding: 0; cursor: pointer; }
+.mj-actions .btn { min-width: 72px; }
+.mj-helper { font-size: 0.9rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.mj-helper.ok { color: var(--ok); font-weight: 700; }
+.mj-furiten { color: var(--danger); }
+
+/* 結果 */
+.mj-win h3 { margin: 0 0 8px; }
+.mj-win .mj-melds { margin-top: 8px; }
+.mj-result { margin-top: 12px; }
+.mj-points-main { font-size: 1.5rem; font-weight: 800; }
+.mj-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.mj-cols h4 { margin: 0 0 6px; font-size: 0.95rem; }
+.mj-table-list { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.mj-table-list td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.mj-table-list td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mj-table-list tr.dora td { color: var(--muted); }
+.mj-table-list tr.sum td { font-weight: 700; }
+
+/* 符点計算 */
+.mj-samples, .mj-modes { gap: 6px; }
+.mj-palette { display: grid; gap: 8px; }
+.mj-palette-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.mj-opt { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; }
+.mj-opt .input { width: auto; min-height: 36px; padding: 4px 8px; }
+.mj-num { width: 4.5em !important; }
+.mj-seg { display: inline-flex; gap: 4px; }
+.mj-flags { gap: 6px 14px; }
+.mj-flag { display: inline-flex; align-items: center; gap: 2px; font-size: 0.9rem; cursor: pointer; }
+.mj-calc-result h3 { margin: 0 0 8px; }
+
+/* 役一覧 */
+.mj-yaku-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.mj-yaku p { margin: 6px 0; }
+.mj-yaku-name { font-size: 1.05rem; }
+@media (max-width: 480px) { .mj-yaku-list { grid-template-columns: 1fr; } }
+
+@media (prefers-reduced-motion: reduce) {
+  button.mj-tile, button.mj-tile:hover { transition: none; transform: none; }
+}
+@media (max-width: 480px) {
+  .mj-tab { padding: 10px 8px; font-size: 0.92rem; }
+  .mj-tabs { gap: 0; }
+}

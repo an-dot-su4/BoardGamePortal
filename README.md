@@ -6,6 +6,7 @@
 
 - ポータル: https://an-dot-su4.github.io/BoardGamePortal/
 - 試作ゲーム（毎日1つ追加・確認待ち）: https://an-dot-su4.github.io/BoardGamePortal/lab.html
+- 麻雀修行（1人で麻雀のルールを覚える・符点計算）: https://an-dot-su4.github.io/BoardGamePortal/mahjong.html
 - 天下札のカード一覧: https://an-dot-su4.github.io/BoardGamePortal/games/tenka/gallery.html
 
 ## 遊び方
