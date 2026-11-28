@@ -7,6 +7,8 @@ import { shanten, waits } from './hand.js';
 import { tileEl, tileRow } from './view.js';
 import { resultView } from './result.js';
 import { snapshot, play, settle } from './motion.js';
+import { TABLES } from './tables.js';
+import { meldTiles } from './score.js';
 
 const SEAT_ORDER = ['1z', '2z', '3z', '4z'];
 const rel = (seat, k) => SEAT_ORDER[(SEAT_ORDER.indexOf(seat) + k) % 4];
@@ -41,6 +43,12 @@ export function createTutorial(root, { done, onDone, onOpen }) {
     if (r.ok && (st.phase === 'won' || st.phase === 'done')) onDone(lesson.id);
     render();
     play(root, prev, st, before, { ok: r.ok, fromKey, msgChanged: msg?.text !== prevMsg });
+    // 点数編: 正解したら、解説（内訳）が見えるところまで送る
+    if (r.ok && action.type === 'answer') {
+      const rv = root.querySelector('.mj-reveal');
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (rv) rv.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+    }
   }
 
   // 描き直してもスクロール位置が動かないようにする
@@ -69,6 +77,7 @@ export function createTutorial(root, { done, onDone, onOpen }) {
     const idx = LESSONS.indexOf(lesson);
     const next = LESSONS[idx + 1];
     const finished = st.phase === 'won' || st.phase === 'done';
+    if (lesson.part === 'score') return quizView(s, next, finished);
     return h('div', { class: 'mj-lesson stack' },
       h('div', { class: 'row' },
         h('button', { class: 'btn small ghost', type: 'button', onclick: () => onOpen(null) }, '← レッスン一覧'),
@@ -83,6 +92,69 @@ export function createTutorial(root, { done, onDone, onOpen }) {
       table(),
       finished ? null : myArea(),
       finished ? finishView(next) : null,
+    );
+  }
+
+  // ---- 点数編（クイズ） ----
+  function quizView(s, next, finished) {
+    const handKey = s?.hand ?? null;
+    return h('div', { class: 'mj-lesson mj-quiz stack' },
+      h('div', { class: 'row' },
+        h('button', { class: 'btn small ghost', type: 'button', onclick: () => onOpen(null) }, '← レッスン一覧'),
+        h('span', { class: 'tag' }, PARTS[lesson.part])),
+      h('div', {},
+        h('h2', { class: 'mj-title' }, lesson.title),
+        h('p', { class: 'muted small mj-goal' }, `目標: ${lesson.goal}`)),
+      // 直前の答えの解説（正解したとき）
+      msg && msg.text && msg.ok && !finished ? h('div', { class: 'panel mj-reveal' },
+        h('p', { class: 'mj-msg ok' }, '⭕ ', msg.text),
+        st.reveal ? resultView(E.handResult(lesson, st.reveal.hand), { only: st.reveal.ask }) : null) : null,
+      finished ? null : h('div', { class: 'panel mj-explain', 'aria-live': 'polite' },
+        s.q ? h('p', { class: 'mj-say mj-q' }, '問題: ', s.q) : h('p', { class: 'mj-say' }, s.say),
+        s.show ? h('div', { class: 'mj-show' }, parse(s.show).map(t => tileEl(t, { size: 'md', label: true }))) : null,
+        s.table ? TABLES[s.table]() : null,
+        msg && msg.text && !msg.ok ? h('p', { class: 'mj-msg ng' }, '❌ ', msg.text) : null,
+        showAnswer ? h('p', { class: 'small mj-answer' }, '答え: ', answerText()) : null),
+      handKey && !finished ? handCard(lesson.hands[handKey]) : null,
+      finished ? null : h('div', { class: 'panel mj-me stack' },
+        st.phase === 'quiz'
+          ? h('div', { class: 'mj-choices' }, s.choices.map(c => h('button', {
+            class: 'btn', type: 'button', onclick: () => send({ type: 'answer', value: c }),
+          }, c)))
+          : null,
+        h('div', { class: 'row mj-actions' },
+          st.phase === 'say' ? h('button', { class: 'btn primary', type: 'button', onclick: () => send({ type: 'next' }) }, '次へ') : null,
+          h('span', { class: 'spacer' }),
+          st.phase === 'quiz' ? h('button', { class: 'btn small ghost', type: 'button', onclick: () => { showAnswer = true; render(); } }, '答えを見る') : null)),
+      finished ? h('div', { class: 'stack mj-finish' },
+        h('div', { class: 'panel' }, h('h3', {}, '✅ このレッスンのまとめ'), h('p', {}, lesson.summary)),
+        h('div', { class: 'row' },
+          h('button', { class: 'btn', type: 'button', onclick: () => open(lesson.id) }, 'もう一度'),
+          next ? h('button', { class: 'btn primary', type: 'button', onclick: () => onOpen(next.id) }, `次へ: ${next.title}`)
+            : h('button', { class: 'btn primary', type: 'button', onclick: () => onOpen(null) }, 'レッスン一覧へ'))) : null,
+    );
+  }
+
+  // クイズのアガリ手（手の内・和了牌・鳴き・条件）
+  function handCard(spec) {
+    const dealer = (spec.seat ?? '2z') === '1z';
+    const tags = [
+      `${dealer ? '親' : '子'}（${WIND_NAME[spec.seat ?? '2z']}家）`,
+      `${WIND_NAME[spec.round ?? '1z']}場`,
+      spec.tsumo ? 'ツモ' : 'ロン',
+      spec.riichi ? 'リーチ' : null,
+      spec.honba ? `${spec.honba}本場` : null,
+    ].filter(Boolean);
+    const dora = parse(spec.dora ?? '');
+    return h('div', { class: 'panel mj-quiz-hand stack' },
+      h('div', { class: 'mj-hand-tiles' },
+        parse(spec.hand).map(t => tileEl(t, { size: 'lg' })),
+        h('span', { class: 'mj-drawn' }, tileEl(spec.win, { size: 'lg', mark: true }))),
+      spec.melds?.length ? h('div', { class: 'mj-melds' }, spec.melds.map(m => meldEl({ ...m, from: 'kami', called: m.type === 'chi' ? meldTiles(m)[0] : m.tile }))) : null,
+      h('div', { class: 'row' },
+        tags.map(t => h('span', { class: 'tag' }, t)),
+        dora.length ? h('span', { class: 'small' }, 'ドラ表示牌 ', dora.map(t => tileEl(t, { size: 'sm' }))) : null,
+        h('span', { class: 'small muted' }, `黄色の枠が${spec.tsumo ? 'ツモ' : 'ロン'}した牌`)),
     );
   }
 
@@ -101,6 +173,7 @@ export function createTutorial(root, { done, onDone, onOpen }) {
     const a = E.solution(lesson, st);
     if (!a) return '';
     return {
+      answer: `「${a.value}」を選ぶ`,
       next: '「次へ」を押す', tsumo: '「ツモ」を押す', ron: '「ロン」を押す', pon: '「ポン」を押す', chi: '「チー」を押す',
       kan: '「カン」を押す', riichi: '「リーチ」を押してから牌を切る', pass: passLabel() === '次へ' ? '「次へ」を押す（見送る）' : '「見送る」を押す',
       discard: `${a.tile ? tileName(a.tile) : ''} を切る`,

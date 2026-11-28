@@ -6,6 +6,7 @@ import { score, meldTiles } from './score.js';
 import { tileEl } from './view.js';
 import { meldEl } from './tutorial.js';
 import { resultView } from './result.js';
+import { TABLES } from './tables.js';
 
 const MODES = [
   ['hand', '手牌'], ['pon', 'ポン'], ['chi', 'チー'], ['minkan', '明槓'], ['ankan', '暗槓'], ['dora', 'ドラ表示牌'], ['ura', '裏ドラ表示牌'],
@@ -35,6 +36,7 @@ function empty() {
 export function createCalc(root) {
   let c = empty();
   let note = '';
+  let quickOpen = false; // 早見表を開いているか（描き直しても閉じないように）
 
   const need = () => 13 - c.melds.length * 3; // 和了牌を除いた手の内の枚数
   const used = () => toCounts([...c.hand, ...(c.win ? [c.win] : []), ...c.melds.flatMap(meldTiles), ...c.dora, ...c.ura]);
@@ -81,6 +83,9 @@ export function createCalc(root) {
       palette(),
       options(),
       resultPanel(),
+      h('details', { class: 'panel mj-quick', open: quickOpen, ontoggle: e => { quickOpen = e.target.open; } },
+        h('summary', {}, '📋 点数早見表・符の表（実戦で困ったときに）'),
+        TABLES.limit(), TABLES.child(), TABLES.dealer(), TABLES.base(), TABLES.fu()),
     ));
   }
 

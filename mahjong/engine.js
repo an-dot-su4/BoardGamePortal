@@ -113,6 +113,7 @@ function enter(lesson, st) {
   const s = step(lesson, st);
   st.rinshan = false;
   if (!s) { st.phase = 'done'; return; }
+  if (s.q) { st.phase = 'quiz'; return; }
   if (s.draw || s.rinshan) {
     st.drawn = s.draw ?? s.rinshan;
     st.rinshan = !!s.rinshan;
@@ -141,6 +142,7 @@ function clearLast(st) {
 
 function advance(lesson, st, text) {
   clearLast(st);
+  st.reveal = null;
   st.i++;
   st.feedback = text ? { ok: true, text } : null;
   enter(lesson, st);
@@ -314,6 +316,15 @@ export function act(lesson, st, action) {
       return { ok: true };
     }
 
+    case 'answer': {
+      if (st.phase !== 'quiz') return ng('今は答える場面ではありません。');
+      const correct = answerOf(lesson, s);
+      if (action.value !== correct) return ng(hint ?? quizHint(s));
+      advance(lesson, st, s.after ?? '正解です！');
+      st.reveal = s.hand && s.ask ? { hand: s.hand, ask: s.ask } : null;
+      return { ok: true };
+    }
+
     case 'pass':
       if (st.phase !== 'call') return ng('今は見送る場面ではありません。');
       if (s.call) {
@@ -359,6 +370,7 @@ function win(lesson, st, s, tile, tsumo) {
 export function solution(lesson, st) {
   const s = step(lesson, st);
   if (!s) return null;
+  if (st.phase === 'quiz') return { type: 'answer', value: answerOf(lesson, s) };
   if (st.phase === 'say') return { type: 'next' };
   if (st.phase === 'draw') {
     if (s.tsumo) return { type: 'tsumo' };
@@ -372,4 +384,43 @@ export function solution(lesson, st) {
   }
   if (st.phase === 'after-call') return { type: 'discard', tile: asList(s.discard)[0] };
   return null;
+}
+
+// ---- 点数編のクイズ ----
+// lesson.hands = { A: { hand（和了牌を除く手の内）, win, melds, tsumo, seat, round, riichi, dora, ura, honba } }
+// step = { q: '問題文', hand?: 'A', ask?: 'fu' | 'han' | 'points', choices: [...], answer?（ask がないとき）, after?, hint? }
+
+export function handInput(spec) {
+  return {
+    hand: [...parse(spec.hand), spec.win], winTile: spec.win, melds: spec.melds ?? [], tsumo: !!spec.tsumo,
+    seatWind: spec.seat ?? '2z', roundWind: spec.round ?? '1z', riichi: !!spec.riichi, ippatsu: !!spec.ippatsu,
+    doraIndicators: parse(spec.dora ?? ''), uraIndicators: parse(spec.ura ?? ''), honba: spec.honba ?? 0,
+  };
+}
+
+export function handResult(lesson, key) {
+  return score(handInput(lesson.hands[key]));
+}
+
+// 点数の言い方（申告のしかた）: ロン「2600点」、子のツモ「700・1300」、親のツモ「2000オール」
+export function pointsAnswer(p) {
+  if (p.ron !== undefined) return `${p.ron}点`;
+  if (p.all !== undefined) return `${p.all}オール`;
+  return `${p.fromOthers}・${p.fromDealer}`;
+}
+
+export function answerOf(lesson, s) {
+  if (!s.ask) return s.answer;
+  const r = handResult(lesson, s.hand);
+  if (!r.ok) throw new Error(`${lesson.id}: ${r.reason}`);
+  if (s.ask === 'fu') return `${r.fu}符`;
+  if (s.ask === 'han') return `${r.han}翻`;
+  return pointsAnswer(r.points);
+}
+
+function quizHint(s) {
+  if (s.ask === 'fu') return '符は、副底20符に「門前ロン10・ツモ2」「刻子・槓子」「役牌の雀頭」「嵌張・辺張・単騎の待ち」を足して、10符単位に切り上げます（平和ツモは20符、七対子は25符）。';
+  if (s.ask === 'han') return '翻は、ついている役の翻と、ドラの枚数を合わせた数です。';
+  if (s.ask === 'points') return '点数表で、翻（横）と符（縦）が交わるところを見ます。ツモは「子の払い・親の払い」、親のツモは「〇〇オール」と言います。';
+  return 'もう一度考えてみましょう。';
 }
