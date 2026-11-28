@@ -18,6 +18,7 @@
 ```
 index.html / js/portal.js   ポータル（ゲーム一覧・部屋を作る・部屋番号で参加）
 lab.html                    試作ゲームのページ（portal.js を共用。body の data-page="lab" で試作だけ並べる）
+mahjong.html / mahjong/     麻雀修行（1人用の学習ページ。部屋・通信は使わない）
 room.html  / js/room.js     部屋（ロビー・プレイヤー一覧・チャット・ホスト操作）。ゲーム中の画面は各ゲームの ui.js に任せる
 js/host.js                  Host（ホスト側の進行役。正しい状態を持ち、各人に view だけ送る）と Guest（参加者側）
 js/net.js                   通信。本番は Trystero、?local=1 なら同じブラウザのタブ間（BroadcastChannel）
@@ -98,6 +99,15 @@ export function createUI(root, api) {   // api.send(action), api.toast(text), ap
   PC表示（`renderPC`）とは☰メニュー・「📱スマホ表示」ボタンで切り替え、`tenkaLayout` に保存。auto はスマホ幅・タッチ端末・低い横画面でスマホ表示。
   画面を変えたら `MOBILE=1`（縦）と `LANDSCAPE=1`（横 844×390）の e2e のスクショも見る。再描画でスクロール位置を保つため、スクロールする要素には `dataset.scrollKey` を付ける。
 - スマホ幅（390px 前後）で崩れないこと。共通のクラス（`.table` `.seats` `.seat` `.hand` `.result-box` `.game-actions` など）は `css/style.css` にある。
+
+## 麻雀修行（mahjong/）
+
+- 麻雀をやったことがない人向けの1人用ページ。タブは「チュートリアル」「符点計算」「役一覧」（URL の `#lesson=<id>` `#calc` `#yaku`）。
+- `tiles.js`（牌の表記 '1m'〜'7z'）・`hand.js`（和了判定・向聴数・待ち）・`score.js`（役・符・点数）は DOM を使わない。
+  ルールは一般的なリーチ麻雀（赤ドラなし・喰いタンあり・切り上げ満貫なし・ダブル役満なし・数え役満あり・連風牌の雀頭4符）。
+- チュートリアルは `lessons.js` の台本（引く牌・他家の捨て牌は固定）を `engine.js` が進める。レッスンを足すときは台本を書き、
+  `expect.yaku` にその手でつく役を入れる。`tests/mahjong-lessons.test.js` が全レッスンを台本どおりに通し、牌が5枚以上出ないか・役がつくかを確かめる。
+- 済みのレッスンは localStorage の `mahjongDone`。公開には `pages.yml` の cp に mahjong.html と mahjong/ が入っている必要がある。
 
 ## 演出（js/fx.js）
 

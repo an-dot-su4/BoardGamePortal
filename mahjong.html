@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>麻雀修行｜ボドゲポータル</title>
+  <meta name="description" content="麻雀をやったことがない人のための練習ページ。ツモ・ロン・ポン・チー・リーチと役を、解説を読みながら実際にアガって覚える。符と点数の計算もできる。">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🀄</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/mahjong.css">
+</head>
+<body data-page="mahjong">
+  <header class="site-header">
+    <a class="brand" href="./">🎲 ボドゲポータル</a>
+    <span class="spacer"></span>
+  </header>
+
+  <main class="wrap mj-page">
+    <section class="hero">
+      <h1>🀄 麻雀修行</h1>
+      <p>麻雀をやったことがない人のための練習ページです。1人で、自分のペースで進められます。</p>
+    </section>
+
+    <nav class="mj-tabs" role="tablist" aria-label="モード">
+      <button class="mj-tab" type="button" role="tab" data-tab="learn">📖 チュートリアル</button>
+      <button class="mj-tab" type="button" role="tab" data-tab="calc">🧮 符点計算</button>
+      <button class="mj-tab" type="button" role="tab" data-tab="yaku">📜 役一覧</button>
+    </nav>
+
+    <section id="pane-learn" role="tabpanel"></section>
+    <section id="pane-calc" role="tabpanel" hidden></section>
+    <section id="pane-yaku" role="tabpanel" hidden></section>
+
+    <p class="small muted mj-foot">ルールは一般的なリーチ麻雀（赤ドラなし・喰いタンあり・切り上げ満貫なし・ダブル役満なし）です。<a href="./">← ポータルに戻る</a></p>
+  </main>
+
+  <script type="module" src="mahjong/main.js"></script>
+</body>
+</html>
