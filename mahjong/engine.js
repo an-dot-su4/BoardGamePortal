@@ -219,7 +219,8 @@ export function act(lesson, st, action) {
       if (st.riichi) return ng('もうリーチしています。');
       if (!menzen(st)) return ng('鳴いた手ではリーチできません（門前のときだけ）。');
       if (!av.riichi) return ng('リーチはテンパイしているとき（1枚切るとテンパイになるとき）だけできます。');
-      if (!s.riichi) return ng(hint ?? 'この場面ではリーチしません。');
+      // hint は「切る牌」の説明なので、リーチには使わない
+      if (!s.riichi) return ng(s.riichiHint ?? 'リーチもできますが、ここではリーチせずに進めます（リーチは「リーチ」のレッスンで練習します）。今は切る牌を選びましょう。');
       st.riichiPending = !st.riichiPending;
       st.feedback = st.riichiPending ? { ok: true, text: 'リーチを宣言しました。続けて切る牌を選びます（横向きに置かれます）。' } : null;
       return { ok: true };
@@ -273,7 +274,13 @@ export function act(lesson, st, action) {
         if (s.from !== 'kami') return ng('チーは上家（左の人）の捨て牌からだけできます。');
         if (!av.chi.length) return ng('チーは捨て牌と手の2枚で順子（並び）ができるときにできます。');
       }
-      if (s.call !== action.type) return ng(hint ?? 'ここでは鳴かずに見送りましょう。');
+      if (s.call !== action.type) {
+        const label = action.type === 'pon' ? 'ポン' : 'チー';
+        // 正解ごとに言葉を変える（hint は見送り・ロンの説明なので、鳴きには使わない）
+        if (s.call === 'ron') return ng(`${label}もできますが、この牌でアガれます。「ロン」を押しましょう。`);
+        if (s.call) return ng(hint ?? `ここは${label}ではなく「${s.call === 'pon' ? 'ポン' : 'チー'}」です。`);
+        return ng(s.callHint ?? `${label}はできますが、ここでは鳴かずに見送りましょう。`);
+      }
       const lo = action.type === 'chi' ? (action.tile ?? av.chi[0]) : s.tile;
       if (action.type === 'chi' && s.chi && lo !== s.chi) return ng(hint ?? 'その組み合わせではなく、別の組み合わせでチーしてみましょう。');
       let use = [s.tile, s.tile];
