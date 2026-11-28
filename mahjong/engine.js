@@ -1,15 +1,93 @@
 // チュートリアルの進行。台本（lessons.js）に沿って、引く牌・他家の捨て牌を固定で進める。
 // DOM は使わない。act は正しい操作なら state を進め、違えば { ok: false, text } で理由を返す（state はそのまま）。
-import { parse, toCounts, toIndex, fromIndex, sortTiles, tileName } from './tiles.js';
+import { parse, toCounts, toIndex, fromIndex, sortTiles, tileName, ALL_TILES } from './tiles.js';
+import { seededRng, shuffle } from '../js/util.js';
 import { isAgari, shanten, waits } from './hand.js';
 import { score } from './score.js';
 
 const SEATS = { kami: '上家', toimen: '対面', shimo: '下家' };
 export { SEATS };
 
+const NEXT = { me: 'shimo', shimo: 'toimen', toimen: 'kami', kami: 'me' };
+
+// 台本を、正しい手番の順（自分 → 下家 → 対面 → 上家 → 自分）に並べ直す。
+// 台本に書いていない他家の番は { from, auto: true }（鳴けない・アガれない牌を自動で捨てる）で埋める。
+// 鳴いたあとは鳴いた人（自分）の下家から、ロン・ツモで終わり。順番が成り立たない台本はエラーにする。
+export function expand(lesson) {
+  const out = [];
+  let turn = null; // 次に動く人。null = まだ決まっていない（レッスンの最初）か、終わった
+  let ended = false;
+  for (const s of lesson.steps) {
+    const who = s.draw ? 'me' : s.rinshan ? 'rinshan' : s.from ?? null;
+    if (who && ended) throw new Error(`${lesson.id}: アガったあとに手順があります`);
+    if (who === 'rinshan') {
+      if (turn !== 'rinshan') throw new Error(`${lesson.id}: カンのあとでないのに嶺上牌を引いています`);
+    } else if (who) {
+      if (turn === 'rinshan') throw new Error(`${lesson.id}: カンのあとは嶺上牌を引きます`);
+      for (let guard = 0; turn && turn !== who; guard++) {
+        if (turn === 'me') throw new Error(`${lesson.id}: 自分の番を飛ばして${SEATS[who]}が捨てています`);
+        if (guard > 3) throw new Error(`${lesson.id}: 手番の順が正しくありません`);
+        out.push({ from: turn, auto: true });
+        turn = NEXT[turn];
+      }
+    }
+    out.push(s);
+    if (s.draw || s.rinshan) {
+      if (s.tsumo) { ended = true; turn = null; } else turn = s.kan ? 'rinshan' : 'shimo';
+    } else if (s.from) {
+      if (s.call === 'ron') { ended = true; turn = null; } else turn = s.call ? 'shimo' : NEXT[s.from];
+    }
+  }
+  return out;
+}
+
+// レッスンに出てくる牌（自動の捨て牌は、これと合わせて同じ牌4枚までにする）
+function scriptTiles(lesson) {
+  const all = [lesson.hand, lesson.myRiver, lesson.dora, lesson.ura, ...Object.values(lesson.rivers ?? {})].filter(Boolean).flatMap(parse);
+  for (const s of lesson.steps) for (const k of ['draw', 'rinshan', 'tile', 'newDora']) if (s[k]) all.push(s[k]);
+  return all;
+}
+
+function chiOptions(hand, tile) {
+  const i = toIndex(tile);
+  const c = toCounts(hand);
+  const out = [];
+  if (i >= 27) return out;
+  const n = i % 9;
+  for (const lo of [i - 2, i - 1, i]) {
+    const ln = n - (i - lo);
+    if (ln < 0 || ln > 6) continue;
+    if ([lo, lo + 1, lo + 2].filter(x => x !== i).every(x => c[x] > 0)) out.push(fromIndex(lo));
+  }
+  return out;
+}
+
+// 自動で捨てる牌: 自分がロン・ポン・チーできない牌を、レッスンごとに決まった順で選ぶ
+function pickAuto(lesson, st, seat) {
+  const used = toCounts([...scriptTiles(lesson), ...st.autoUsed]);
+  let seed = 0;
+  for (const ch of lesson.id) seed = seed * 31 + ch.charCodeAt(0);
+  const order = shuffle([...ALL_TILES], seededRng(seed + st.autoUsed.length * 7919));
+  const hand = toCounts(st.hand);
+  for (const t of order) {
+    const i = toIndex(t);
+    if (used[i] >= 4) continue;
+    if (hand[i] >= 2) continue;
+    hand[i]++;
+    const ron = isAgari(hand, st.melds.length);
+    hand[i]--;
+    if (ron) continue;
+    if (seat === 'kami' && chiOptions(st.hand, t).length) continue;
+    return t;
+  }
+  throw new Error(`${lesson.id}: 自動の捨て牌を選べません`);
+}
+
 export function start(lesson) {
   const st = {
     lesson: lesson.id,
+    steps: expand(lesson),
+    autoUsed: [],
     i: 0,
     hand: sortTiles(parse(lesson.hand ?? '')),
     drawn: null,
@@ -29,7 +107,7 @@ export function start(lesson) {
   return st;
 }
 
-export function step(lesson, st) { return lesson.steps[st.i] ?? null; }
+export function step(lesson, st) { return st.steps[st.i] ?? null; }
 
 function enter(lesson, st) {
   const s = step(lesson, st);
@@ -40,7 +118,16 @@ function enter(lesson, st) {
     st.rinshan = !!s.rinshan;
     if (s.newDora) st.dora.push(s.newDora);
     st.phase = 'draw';
+  } else if (s.auto) {
+    // 台本にない他家の番: 自動で捨てて、そのまま次へ（操作はいらない）
+    clearLast(st);
+    const t = pickAuto(lesson, st, s.from);
+    st.autoUsed.push(t);
+    st.rivers[s.from].push({ tile: t, last: true });
+    st.i++;
+    enter(lesson, st);
   } else if (s.from) {
+    clearLast(st);
     st.rivers[s.from].push({ tile: s.tile, last: true });
     st.phase = 'call';
   } else {
@@ -48,8 +135,12 @@ function enter(lesson, st) {
   }
 }
 
-function advance(lesson, st, text) {
+function clearLast(st) {
   for (const k of Object.keys(st.rivers)) for (const r of st.rivers[k]) delete r.last;
+}
+
+function advance(lesson, st, text) {
+  clearLast(st);
   st.i++;
   st.feedback = text ? { ok: true, text } : null;
   enter(lesson, st);

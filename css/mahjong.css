@@ -196,3 +196,11 @@ button.mj-tile.side:hover { transform: rotate(-90deg); }
   .mj-center { padding: 4px 6px; gap: 2px; }
   .mj-explain { min-height: 5.6em; }
 }
+@media (max-width: 640px) {
+  /* 説明が長くても卓（捨て牌）が隠れないよう、説明の高さを決めて中でスクロールする */
+  .mj-explain { max-height: 9.2em; overflow-y: auto; overscroll-behavior: contain; }
+  .mj-explain .mj-msg { font-size: 0.88rem; padding: 6px 10px; margin-bottom: 4px; }
+  /* 13枚＋引いた牌が1行に収まる幅 */
+  .mj-tile.lg { --tw: min(40px, calc((100vw - 92px) / 14)); }
+  .mj-drawn { margin-left: 5px; }
+}
