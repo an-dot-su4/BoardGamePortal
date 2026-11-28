@@ -127,3 +127,29 @@ test('自動の捨て牌ではロン・ポン・チーのボタンが出ない�
     }
   }
 });
+
+test('間違えたボタンには、そのボタンに合った言葉を出す', () => {
+  for (const lesson of LESSONS) {
+    const st = E.start(lesson);
+    while (st.phase !== 'done' && st.phase !== 'won') {
+      const av = E.available(lesson, st);
+      const sol = E.solution(lesson, st);
+      const tries = [];
+      if (av.riichi && sol.type !== 'riichi') tries.push({ type: 'riichi' });
+      if (av.pon && sol.type !== 'pon') tries.push({ type: 'pon' });
+      if (sol.type !== 'chi') for (const c of av.chi) tries.push({ type: 'chi', tile: c });
+      for (const a of tries) {
+        const r = E.act(lesson, structuredClone(st), a);
+        if (r.ok) continue;
+        const where = `${lesson.id} ${st.i} ${a.type}: ${r.text}`;
+        if (a.type === 'riichi') assert.match(r.text, /リーチ/, where);
+        else {
+          assert.doesNotMatch(r.text, /フリテン(なので|です)/, where);
+          assert.match(r.text, a.type === 'pon' ? /ポン/ : /チー/, where);
+          if (sol.type === 'ron') assert.match(r.text, /ロン/, where);
+        }
+      }
+      E.act(lesson, st, sol);
+    }
+  }
+});
