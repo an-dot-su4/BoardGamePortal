@@ -88,8 +88,10 @@ export function createTutorial(root, { done, onDone, onOpen }) {
 
   function explain(s) {
     return h('div', { class: 'panel mj-explain', 'aria-live': 'polite' },
-      msg && msg.text ? h('p', { class: `mj-msg ${msg.ok ? 'ok' : 'ng'}` }, msg.ok ? '⭕ ' : '❌ ', msg.text) : null,
+      // 間違いはいちばん上に。正解のあとの言葉は、今の指示（say）の下に
+      msg && msg.text && !msg.ok ? h('p', { class: 'mj-msg ng' }, '❌ ', msg.text) : null,
       s?.say ? h('p', { class: 'mj-say' }, s.say) : null,
+      msg && msg.text && msg.ok ? h('p', { class: 'mj-msg ok' }, '⭕ ', msg.text) : null,
       s?.show ? h('div', { class: 'mj-show' }, parse(s.show).map(t => tileEl(t, { size: 'md', label: true }))) : null,
       showAnswer ? h('p', { class: 'small mj-answer' }, '答え: ', answerText()) : null,
     );

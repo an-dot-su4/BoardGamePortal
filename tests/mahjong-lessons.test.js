@@ -80,3 +80,50 @@ test('チーは上家からだけ', () => {
   E.act(b7, st, { type: 'pass' });
   assert.deepEqual(E.available(b7, st).chi, ['5p']);
 });
+
+const NEXT = { me: 'shimo', shimo: 'toimen', toimen: 'kami', kami: 'me' };
+
+for (const lesson of LESSONS) {
+  test(`手番の順（自分→下家→対面→上家）を守る: ${lesson.id}`, () => {
+    const steps = E.expand(lesson);
+    let prev = null;
+    for (const s of steps) {
+      const who = s.draw ? 'me' : s.from ?? null;
+      if (!who) continue; // 説明と嶺上牌
+      if (prev) {
+        const expectNext = prev.call && prev.call !== 'ron' ? 'shimo' : NEXT[prev.from ?? 'me'];
+        assert.equal(who, expectNext, `${prev.from ?? '自分'} の次が ${who}`);
+      }
+      prev = s;
+    }
+    // 自動の捨て牌で、ロン・ポン・チーできる牌や5枚目の牌を出さない
+    const st = E.start(lesson);
+    for (let n = 0; n < 200 && st.phase !== 'done' && st.phase !== 'won'; n++) {
+      const before = st.steps.slice(0, st.i);
+      E.act(lesson, st, E.solution(lesson, st));
+      void before;
+    }
+    const all = [lesson.hand, lesson.myRiver, lesson.dora, lesson.ura, ...Object.values(lesson.rivers ?? {})].filter(Boolean).flatMap(parse);
+    for (const s of lesson.steps) for (const k of ['draw', 'rinshan', 'tile', 'newDora']) if (s[k]) all.push(s[k]);
+    all.push(...st.autoUsed);
+    toCounts(all).forEach((n, i) => assert.ok(n <= 4, `${fromIndex(i)} が ${n} 枚`));
+  });
+}
+
+test('2巡するレッスンでは、間に他の3人が捨てている', () => {
+  const b3 = LESSONS.find(l => l.id === 'b3');
+  const st = E.start(b3);
+  while (st.phase !== 'won') E.act(b3, st, E.solution(b3, st));
+  assert.equal(st.river.length, 2, '自分は2回捨てた');
+  for (const k of ['shimo', 'toimen', 'kami']) assert.equal(st.rivers[k].length, 2, `${k} も2回捨てた`);
+});
+
+test('自動の捨て牌ではロン・ポン・チーのボタンが出ない（そのまま次へ進む）', () => {
+  for (const lesson of LESSONS) {
+    const st = E.start(lesson);
+    while (st.phase !== 'done' && st.phase !== 'won') {
+      assert.ok(!E.step(lesson, st)?.auto, '自動の番で止まらない');
+      E.act(lesson, st, E.solution(lesson, st));
+    }
+  }
+});
