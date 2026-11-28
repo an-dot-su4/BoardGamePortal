@@ -107,6 +107,9 @@ export function createUI(root, api) {   // api.send(action), api.toast(text), ap
   ルールは一般的なリーチ麻雀（赤ドラなし・喰いタンあり・切り上げ満貫なし・ダブル役満なし・数え役満あり・連風牌の雀頭4符）。
 - チュートリアルは `lessons.js` の台本（引く牌・他家の捨て牌は固定）を `engine.js` が進める。レッスンを足すときは台本を書き、
   `expect.yaku` にその手でつく役を入れる。`tests/mahjong-lessons.test.js` が全レッスンを台本どおりに通し、牌が5枚以上出ないか・役がつくかを確かめる。
+- 演出は `motion.js`。操作の前に `snapshot()` で牌の位置（`data-key`）を測り、描き直したあと前後の状態の差から再生する
+  （捨て牌が河へ飛ぶ・手牌の並び直し・他家の捨て牌がその方向から入る・鳴いた牌が面子へ・アガリの表示）。次の操作で `settle()` が残りを片づける。
+  描き直してもスクロール位置は保ち、手牌と操作ボタンは画面下に貼りつける（スマホで説明の長さが変わっても指の位置がずれない）。
 - 済みのレッスンは localStorage の `mahjongDone`。公開には `pages.yml` の cp に mahjong.html と mahjong/ が入っている必要がある。
 
 ## 演出（js/fx.js）

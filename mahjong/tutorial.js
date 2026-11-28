@@ -6,6 +6,7 @@ import { toCounts, tileName, WIND_NAME, parse, doraFromIndicator } from './tiles
 import { shanten, waits } from './hand.js';
 import { tileEl, tileRow } from './view.js';
 import { resultView } from './result.js';
+import { snapshot, play, settle } from './motion.js';
 
 const SEAT_ORDER = ['1z', '2z', '3z', '4z'];
 const rel = (seat, k) => SEAT_ORDER[(SEAT_ORDER.indexOf(seat) + k) % 4];
@@ -18,24 +19,35 @@ export function createTutorial(root, { done, onDone, onOpen }) {
   let hints = true;
 
   function open(id) {
+    settle();
     lesson = id ? findLesson(id) : null;
     st = lesson ? E.start(lesson) : null;
     msg = null;
     showAnswer = false;
+    document.body.classList.toggle('mj-in-lesson', !!lesson);
     render();
     window.scrollTo({ top: 0 });
   }
 
-  function send(action) {
+  // fromKey: 押した牌の data-key（演出で、そこから飛ばす）
+  function send(action, fromKey) {
+    settle();
+    const prev = structuredClone(st);
+    const before = snapshot(root);
+    const prevMsg = msg?.text;
     const r = E.act(lesson, st, action);
     msg = r.ok ? st.feedback : { ok: false, text: r.text };
     showAnswer = false;
     if (r.ok && (st.phase === 'won' || st.phase === 'done')) onDone(lesson.id);
     render();
+    play(root, prev, st, before, { ok: r.ok, fromKey, msgChanged: msg?.text !== prevMsg });
   }
 
+  // 描き直してもスクロール位置が動かないようにする
   function render() {
+    const y = window.scrollY;
     root.replaceChildren(lesson ? lessonView() : listView());
+    if (window.scrollY !== y) window.scrollTo({ top: y, behavior: 'instant' });
   }
 
   function listView() {
@@ -101,7 +113,7 @@ export function createTutorial(root, { done, onDone, onOpen }) {
   function riverEl(list, label, cls) {
     return h('div', { class: `mj-river ${cls}` },
       h('div', { class: 'mj-river-label' }, label),
-      h('div', { class: 'mj-river-tiles' }, list.map(r => tileEl(r.tile, { size: 'sm', side: r.riichi, mark: r.last, dim: r.called }))));
+      h('div', { class: 'mj-river-tiles' }, list.map((r, k) => tileEl(r.tile, { size: 'sm', side: r.riichi, mark: r.last, dim: r.called, key: `r:${cls}:${k}` }))));
   }
 
   function table() {
@@ -114,7 +126,7 @@ export function createTutorial(root, { done, onDone, onOpen }) {
       h('div', { class: 'mj-center' },
         h('div', { class: 'small' }, `${WIND_NAME[lesson.round ?? '1z']}場`),
         dora.length ? h('div', { class: 'small' }, 'ドラ表示牌') : null,
-        dora.length ? h('div', { class: 'mj-row' }, dora.map(t => tileEl(t, { size: 'sm' }))) : null,
+        dora.length ? h('div', { class: 'mj-row' }, dora.map((t, k) => tileEl(t, { size: 'sm', key: `dora:${k}` }))) : null,
         h('div', { class: 'small' }, `ドラ: ${dora.map(t => tileName(doraFromIndicator(t))).join('・') || 'なし'}`)),
       riverEl(st.rivers.shimo, name('下家', rel(seat, 1)), 'shimo'),
       riverEl(st.river, `あなた（${WIND_NAME[seat]}家）${st.riichi ? '・リーチ中' : ''}`, 'me'),
@@ -124,12 +136,16 @@ export function createTutorial(root, { done, onDone, onOpen }) {
   function myArea() {
     const av = E.available(lesson, st);
     const canDiscard = st.phase === 'draw' || st.phase === 'after-call';
-    const onTile = t => (canDiscard ? () => send({ type: 'discard', tile: t }) : undefined);
+    const onTile = (t, key) => (canDiscard ? () => send({ type: 'discard', tile: t }, key) : undefined);
+    const seen = {};
     const hand = h('div', { class: 'mj-hand' },
       h('div', { class: 'mj-hand-tiles' },
-        st.hand.map(t => tileEl(t, { size: 'lg', onclick: onTile(t) })),
-        st.drawn ? h('span', { class: 'mj-drawn' }, tileEl(st.drawn, { size: 'lg', onclick: onTile(st.drawn), mark: true })) : null),
-      st.melds.length ? h('div', { class: 'mj-melds' }, st.melds.map(meldEl)) : null);
+        st.hand.map(t => {
+          const key = `h:${t}:${seen[t] = (seen[t] ?? 0) + 1}`;
+          return tileEl(t, { size: 'lg', onclick: onTile(t, key), key });
+        }),
+        st.drawn ? h('span', { class: 'mj-drawn' }, tileEl(st.drawn, { size: 'lg', onclick: onTile(st.drawn, 'd'), mark: true, key: 'd' })) : null),
+      st.melds.length ? h('div', { class: 'mj-melds' }, st.melds.map((m, k) => meldEl(m, `m:${k}`))) : null);
 
     const btns = [];
     const b = (label, action, primary) => btns.push(h('button', { class: `btn${primary ? ' primary' : ''}`, type: 'button', onclick: () => send(action) }, label));
@@ -179,7 +195,7 @@ export function createTutorial(root, { done, onDone, onOpen }) {
 
   function finishView(next) {
     const r = st.result;
-    return h('div', { class: 'stack' },
+    return h('div', { class: 'stack mj-finish' },
       r ? h('div', { class: 'panel mj-win' },
         h('h3', {}, st.win.tsumo ? '🎉 ツモ！' : '🎉 ロン！'),
         h('div', { class: 'mj-hand-tiles' }, st.hand.map(t => tileEl(t, { size: 'md' })),
@@ -203,7 +219,7 @@ export function createTutorial(root, { done, onDone, onOpen }) {
 }
 
 // 鳴いた面子（鳴いた牌は横向き。暗槓は両端を裏向き）
-export function meldEl(m) {
+export function meldEl(m, key) {
   const i = Number(m.tile[0]);
   let tiles;
   if (m.type === 'chi') {
@@ -217,5 +233,5 @@ export function meldEl(m) {
   } else {
     tiles = [h('span', { class: 'mj-tile md back' }), tileEl(m.tile, { size: 'md' }), tileEl(m.tile, { size: 'md' }), h('span', { class: 'mj-tile md back' })];
   }
-  return h('span', { class: 'mj-meld', title: { chi: 'チー', pon: 'ポン', minkan: '明槓', ankan: '暗槓' }[m.type] }, tiles);
+  return h('span', { class: 'mj-meld', dataset: key ? { key } : undefined, title: { chi: 'チー', pon: 'ポン', minkan: '明槓', ankan: '暗槓' }[m.type] }, tiles);
 }

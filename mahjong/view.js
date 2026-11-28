@@ -85,7 +85,7 @@ export function tileEl(tile, opts = {}) {
   const title = `${tileName(tile)}（${tileYomi(tile)}）`;
   const el = h(opts.onclick ? 'button' : 'span', {
     class: cls, title, 'aria-label': title, type: opts.onclick ? 'button' : undefined,
-    onclick: opts.onclick, dataset: { tile },
+    onclick: opts.onclick, dataset: opts.key ? { tile, key: opts.key } : { tile },
   });
   el.appendChild(face(tile));
   if (opts.label) return h('span', { class: 'mj-labeled' }, el, h('span', { class: 'mj-label' }, tileName(tile)));
