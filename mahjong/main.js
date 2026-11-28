@@ -35,6 +35,7 @@ function route() {
   if (hash === 'calc' || hash === 'yaku') tab = hash;
   else if (hash.startsWith('lesson=') && findLesson(hash.slice(7))) lesson = hash.slice(7);
   for (const [k, el] of Object.entries(panes)) el.hidden = k !== tab;
+  document.body.classList.toggle('mj-in-lesson', tab === 'learn' && !!lesson);
   for (const t of tabs) t.setAttribute('aria-selected', String(t.dataset.tab === tab));
   if (tab === 'learn' && tutorial.current !== lesson) tutorial.open(lesson);
   if (tab === 'learn' && !lesson && tutorial.current === null && !panes.learn.childElementCount) tutorial.open(null);
