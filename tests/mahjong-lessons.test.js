@@ -153,3 +153,29 @@ test('間違えたボタンには、そのボタンに合った言葉を出す',
     }
   }
 });
+
+test('点数編: 答えは選択肢の中にあり、計算する問題は score.js と一致する', () => {
+  for (const lesson of LESSONS.filter(l => l.part === 'score')) {
+    for (const s of lesson.steps) {
+      if (!s.q) continue;
+      const a = E.answerOf(lesson, s);
+      assert.ok(s.choices.includes(a), `${lesson.id}「${s.q}」の答え ${a} が選択肢にない`);
+      assert.equal(new Set(s.choices).size, s.choices.length, '選択肢が重ならない');
+      if (s.ask) assert.ok(E.handResult(lesson, s.hand).ok, `${lesson.id} の手 ${s.hand} が計算できる`);
+    }
+  }
+});
+
+test('点数編: まちがえた答えは理由つきで断り、正解で次へ進む', () => {
+  const s4 = LESSONS.find(l => l.id === 's4');
+  const st = E.start(s4);
+  E.act(s4, st, { type: 'next' });
+  assert.equal(st.phase, 'quiz');
+  const r = E.act(s4, st, { type: 'answer', value: '30符' });
+  assert.equal(r.ok, false);
+  assert.match(r.text, /副底20符/);
+  assert.ok(E.act(s4, st, { type: 'answer', value: '40符' }).ok);
+  assert.deepEqual(st.reveal, { hand: 'D', ask: 'fu' }, '正解したら内訳を見せる');
+  assert.equal(E.pointsAnswer({ fromOthers: 400, fromDealer: 700 }), '400・700');
+  assert.equal(E.pointsAnswer({ all: 2000 }), '2000オール');
+});
