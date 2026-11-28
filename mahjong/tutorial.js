@@ -126,7 +126,7 @@ export function createTutorial(root, { done, onDone, onOpen }) {
       riverEl(st.rivers.toimen, name('対面', rel(seat, 2)), 'toimen'),
       riverEl(st.rivers.kami, name('上家', rel(seat, 3)), 'kami'),
       h('div', { class: 'mj-center' },
-        h('div', { class: 'small' }, `${WIND_NAME[lesson.round ?? '1z']}場`),
+        h('div', { class: 'small' }, `${WIND_NAME[lesson.round ?? '1z']}場・自風 ${WIND_NAME[seat]}`),
         dora.length ? h('div', { class: 'small' }, 'ドラ表示牌') : null,
         dora.length ? h('div', { class: 'mj-row' }, dora.map((t, k) => tileEl(t, { size: 'sm', key: `dora:${k}` }))) : null,
         h('div', { class: 'small' }, `ドラ: ${dora.map(t => tileName(doraFromIndicator(t))).join('・') || 'なし'}`)),
